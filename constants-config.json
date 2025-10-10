@@ -31,12 +31,12 @@
 		"calendar": "",
 		"kofi": "",
 		"buy-me-a-coffee": "",
-		"this-github-repo": "https://github.com/nerdymomocat-templates/webtrotion-astro-notion-cms-website-blog"
+		"this-github-repo": "https://github.com/kalun88/kalunleung"
 	},
 	"custom-domain": "",
 	"base-path": "",
 	"giscus": {
-		"data-repo": "nerdymomocat-templates/webtrotion-astro-notion-cms-website-blog",
+		"data-repo": "",
 		"data-repo-id": "R_kgDOK0FuUA",
 		"data-category": "Announcements",
 		"data-category-id": "DIC_kwDOK0FuUM4CbZ5A",
@@ -53,12 +53,12 @@
 		}
 	},
 	"references": {
-		"site-links-in-page": true,
-		"external-links-in-page": true,
-		"media-and-file-links-in-this-page": true,
-		"links-to-this-page": true,
-		"popovers": true,
-		"footnotes": true
+		"site-links-in-page": false,
+		"external-links-in-page": false,
+		"media-and-file-links-in-this-page": false,
+		"links-to-this-page": false,
+		"popovers": false,
+		"footnotes": false
 	},
 	"shortcodes": {
 		"html-render": "<!DOCTYPE html> <!-- iframe -->",
@@ -75,6 +75,23 @@
 		"table": "<<🗂️>>"
 	},
 	"recent-posts-on-home-page": false,
+	"homepage-collections": {
+
+		"▉ news": {
+			"enabled": true,
+			"title": "News",
+			"use-pinned": true,
+			"max-items": 3,
+			"display-style": "medium-cards"
+		},
+		"▙ portfolio": {
+			"enabled": true,
+			"title": "Work",
+			"use-pinned": true,
+			"max-items": 3,
+			"display-style": "medium-cards"
+		}
+	},
 	"theme": {
 		"colors": {
 			"bg": {
@@ -103,10 +120,10 @@
 			}
 		},
 		"fontfamily-google-fonts": {
-			"combined-url": "https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&family=Roboto:ital,wght@0,400;0,500;0,700;1,400;1,500;1,700&display=swap",
-			"sans-font-name": "Roboto",
+			"combined-url": "https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,100..900;1,100..900&family=Roboto+Mono:ital,wght@0,100..700;1,100..700&display=swap",
+			"sans-font-name": "Jost",
 			"serif-font-name": "",
-			"mono-font-name": "Roboto\\ Mono"
+			"mono-font-name": "Roboto Mono"
 		}
 	},
 	"webmention": {
@@ -114,18 +131,31 @@
 		"webmention-link": ""
 	},
 	"number-of-posts-per-page": 10,
-	"enable-lightbox": true,
+	"enable-lightbox": false,
 	"menu-pages-collection": "main",
+	"nav-order": [
+		{"type": "page", "slug": "home", "title": "梁\n家\n綸"},
+		{"type": "page", "slug": "about", "title": "▁\nabout"},
+		{"type": "page", "slug": "mubone", "title": "▄\nmubone"},
+		{"type": "collection", "name": "▉ news", "title": "▉\nnews"},
+		{"type": "page", "slug": "dates", "title": "▇\ndates"},
+		{"type": "collection", "name": "▙ portfolio", "title": "▙\nportfolio"},
+		{"type": "page", "slug": "collaborations", "title": "▞\ncollaborations"},
+		{"type": "collection", "name": "▦ media", "title": "▦\nmedia"}
+		
+	],
 	"heading-blocks": ["heading_1", "heading_2", "heading_3"],
-	"full-preview-collections": ["Stream"],
+	"full-preview-collections": ["▦ media"],
+	"medium-preview-collections": ["▙ portfolio"],
+	"news-feed-collections": ["▉ news"],
 	"hide-underscore-slugs-in-lists": true,
-	"home-page-slug": "",
-	"all-footnotes-page-slug": "_all-footnotes",
+	"home-page-slug": "home",
+	"all-footnotes-page-slug": "",
 	"og-setup": {
 		"columns": 1,
-		"excerpt": false,
-		"title-font-url": "https://fonts.googleapis.com/css2?family=Kreon:wght@500&display=swap",
-		"footnote-font-url": "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@700&display=swap"
+		"excerpt": true,
+		"title-font-url": "https://fonts.googleapis.com/css2?family=Jost:wght@600&display=swap",
+		"footnote-font-url": "https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@500&display=swap"
 	},
 	"full-width-social-embeds": false,
 	"optimize-images": true,

@@ -5,10 +5,11 @@ import { extractTargetBlocks, getNavLink, getReferencesInPage, resetCurrentHeadi
 import NotionBlocks from "@/components/NotionBlocks.astro";
 import type { Post } from "@/lib/interfaces";
 import { siteInfo } from "@/siteInfo";
-import { FULL_PREVIEW_COLLECTIONS, HIDE_UNDERSCORE_SLUGS_IN_LISTS, HOME_PAGE_SLUG, RECENT_POSTS_ON_HOME_PAGE, LAST_BUILD_TIME, BUILD_FOLDER_PATHS } from "@/constants";
+import { FULL_PREVIEW_COLLECTIONS, HIDE_UNDERSCORE_SLUGS_IN_LISTS, HOME_PAGE_SLUG, RECENT_POSTS_ON_HOME_PAGE, HOMEPAGE_COLLECTIONS, LAST_BUILD_TIME, BUILD_FOLDER_PATHS } from "@/constants";
 import PostPreview from "@/components/blog/PostPreview.astro";
+import PostPreviewMedium from "@/components/blog/PostPreviewMedium.astro";
 import Icon from "@/components/Icon.astro";
-import { buildHeadings } from "@/utils";
+import { buildHeadings, slugify } from "@/utils";
 import TOC from "@/components/blog/TOC.astro";
 import fs from "fs/promises";
 import path from "path";
@@ -142,19 +143,68 @@ if (pageFound) {
 }
 
 let recent_posts = null;
+let homepage_collections = {};
+
+// Legacy recent posts support
 if (pageFound && page.Slug === HOME_PAGE_SLUG && RECENT_POSTS_ON_HOME_PAGE) {
-		recent_posts = await getAllPosts();
-		recent_posts = recent_posts.filter((post) => !FULL_PREVIEW_COLLECTIONS.includes(post.Collection));
+		const all_posts = await getAllPosts();
+		recent_posts = all_posts.filter((post) => !FULL_PREVIEW_COLLECTIONS.includes(post.Collection));
 		if (HIDE_UNDERSCORE_SLUGS_IN_LISTS) {
 				recent_posts = recent_posts.filter((post) => !post.Slug.startsWith("_"));
 		}
 		recent_posts = recent_posts.slice(0, 5);
-		if (recent_posts && headings) {
-				headings.push({
-						text: "Recent Posts",
-						slug: "auto-recent-posts",
-						depth: 1,
+}
+
+// New granular homepage collections system
+if (pageFound && page.Slug === HOME_PAGE_SLUG && HOMEPAGE_COLLECTIONS && Object.keys(HOMEPAGE_COLLECTIONS).length > 0) {
+		const all_posts = await getAllPosts();
+		
+		for (const [collectionName, config] of Object.entries(HOMEPAGE_COLLECTIONS)) {
+				if (config.enabled) {
+						let collection_posts = all_posts.filter((post) => post.Collection === collectionName);
+						
+						// Apply underscore filter
+						if (HIDE_UNDERSCORE_SLUGS_IN_LISTS) {
+								collection_posts = collection_posts.filter((post) => !post.Slug.startsWith("_"));
+						}
+						
+						// Filter by pinned status if use-pinned is true
+						if (config["use-pinned"]) {
+								collection_posts = collection_posts.filter((post) => post.Pinned);
+						}
+						
+						// Limit number of items
+						if (config["max-items"]) {
+								collection_posts = collection_posts.slice(0, config["max-items"]);
+						}
+						
+						// Store the collection data
+						homepage_collections[collectionName] = {
+								posts: collection_posts,
+								config: config
+						};
+				}
+		}
+		if (headings) {
+				// Add headings for new granular collections
+				Object.entries(homepage_collections).forEach(([collectionName, data]) => {
+						if (data.posts && data.posts.length > 0) {
+								headings.push({
+										text: data.config.title,
+										slug: `auto-${collectionName.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
+										depth: 1,
+								});
+						}
 				});
+				
+				// Legacy recent posts heading
+				if (recent_posts && recent_posts.length > 0) {
+						headings.push({
+								text: "Recent Posts",
+								slug: "auto-recent-posts",
+								depth: 1,
+						});
+				}
 		}
 }
 ---
@@ -179,33 +229,65 @@ if (pageFound && page.Slug === HOME_PAGE_SLUG && RECENT_POSTS_ON_HOME_PAGE) {
 								{headings && !!headings.length && <TOC headings={headings} />}
 						</article>
 				</div>
-				{RECENT_POSTS_ON_HOME_PAGE && recent_posts && (
-						<div class="max-w-[708px] sm:mr-20 print:max-w-full print:mr-auto">
-								<a href="#auto-recent-posts" id="auto-recent-posts" class="inline" onclick="var fullUrl = `${window.location.origin}${window.location.pathname}#${id}`; navigator.clipboard.writeText(fullUrl);">
-										<h2 class="mb-4 mt-8 text-2xl font-normal hasId">
-												<strong class="font-semibold">Recent Posts</strong>
-										</h2>
-								</a>
-								<section aria-label="Recent posts list">
+				{/* New Granular Homepage Collections */}
+				{Object.entries(homepage_collections).map(([collectionName, data]) => (
+					data.posts && data.posts.length > 0 && (
+						<div key={collectionName} class="max-w-[708px] sm:mr-20 print:max-w-full print:mr-auto">
+							<a href={`#auto-${collectionName.toLowerCase().replace(/[^a-z0-9]/g, '-')}`} id={`auto-${collectionName.toLowerCase().replace(/[^a-z0-9]/g, '-')}`} class="inline" onclick="var fullUrl = `${window.location.origin}${window.location.pathname}#${id}`; navigator.clipboard.writeText(fullUrl);">
+								<h2 class="mb-4 mt-8 text-2xl font-normal hasId">
+									<strong class="font-semibold">{data.config.title}</strong>
+								</h2>
+							</a>
+							<section aria-label={`${data.config.title} list`}>
+								{data.config['display-style'] === 'medium-cards' ? (
+									// Portfolio/medium card style - no gaps, collapsed borders
+									<>
+										<div class="portfolio-cards grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+											<style>
+												.portfolio-cards > * {
+													margin-right: -1px;
+													margin-bottom: -1px;
+												}
+											</style>
+											{data.posts.map((post) => (
+												<PostPreviewMedium key={post.id} post={post} as="h3" showPin={false} />
+											))}
+										</div>
+										<span class="mt-4 block sm:text-end">
+											<a
+												class="sm:hover:text-accent"
+												href={getNavLink(`/collections/${slugify(collectionName)}/`)}
+												data-astro-prefetch
+											>
+												View all {collectionName.toLowerCase()} →
+											</a>
+										</span>
+									</>
+								) : (
+									// List style for work and blog
+									<>
 										<ul class="space-y-4 text-start">
-												{recent_posts.map((post) => (
-														<li class="flex flex-col max-w-full flex-wrap gap-1.5 [&_q]:basis-full">
-																<PostPreview post={post} as="h3" withDesc />
-														</li>
-												))}
+											{data.posts.map((post) => (
+												<li key={post.id} class="flex flex-col max-w-full flex-wrap gap-1.5 [&_q]:basis-full">
+													<PostPreview post={post} as="h3" withDesc />
+												</li>
+											))}
 										</ul>
 										<span class="mt-4 block sm:text-end">
-												<a
-														class="sm:hover:text-accent"
-														href={getNavLink("/posts/")}
-														aria-label="View all posts"
-												>
-														View all →
-												</a>
+											<a
+												class="sm:hover:text-accent"
+												href={collectionName.toLowerCase() === 'blog' ? getNavLink("/posts/") : getNavLink(`/collections/${slugify(collectionName)}/`)}
+												aria-label={`View all ${collectionName.toLowerCase()}`}
+											>
+												View all →
+											</a>
 										</span>
-								</section>
+									</>
+								)}
+							</section>
 						</div>
-				)}
+					)
+				))}
 		</PageLayout>
 
 		<button

@@ -1,0 +1,159 @@
+---
+import type { HTMLTag } from "astro/types";
+import FormattedDate from "@/components/FormattedDate.astro";
+import type { Post } from "@/lib/interfaces";
+import { getNotionColorToTailwindColor } from "@/lib/style-helpers";
+import { getNavLink, getPostLink, filePath } from "@/lib/blog-helpers";
+import { MENU_PAGES_COLLECTION } from "@/constants";
+import { getPostContentByPostId } from "@/lib/notion/client";
+import { extractTargetBlocks } from "@/lib/blog-helpers";
+import Icon from "@/components/Icon.astro";
+import { slugify } from "@/utils";
+
+interface Props {
+	post: Post;
+	as?: HTMLTag;
+	showPin?: boolean;
+}
+
+const { post, as: Tag = "div", showPin = true } = Astro.props;
+const postLink = getPostLink(post.Slug, post.Collection === MENU_PAGES_COLLECTION);
+
+// manual-edit: Get first image from content, use excerpt for text
+const { blocks } = await getPostContentByPostId(post);
+
+// Look for the first image in the content
+let firstImageUrl = "";
+const imageBlock = blocks.find(block => block.Type === "image" && block.NImage);
+
+if (imageBlock && imageBlock.NImage) {
+	const imageData = imageBlock.NImage;
+	
+	if (imageData.File && imageData.File.Url) {
+		try {
+			// Use OptimizedUrl if available, otherwise Url
+			const imageUrl = imageData.File.OptimizedUrl || imageData.File.Url;
+			firstImageUrl = filePath(new URL(imageUrl));
+		} catch (err) {
+			console.log(`Image URL error for ${post.Title}:`, err);
+			console.log("Image data:", imageData);
+		}
+	} else if (imageData.External && imageData.External.Url) {
+		firstImageUrl = imageData.External.Url;
+	}
+} else {
+	// Debug: log when no image is found
+	console.log(`No image found for "${post.Title}" (slug: ${post.Slug}), blocks count: ${blocks.length}`);
+	if (blocks.length > 0) {
+		console.log("Block types:", blocks.map(b => b.Type));
+	}
+}
+---
+
+<!-- manual-edit: Magazine-style card -->
+<article class="group relative border border-gray-300 bg-white" role="article" aria-labelledby={`post-title-${post.PageId}`}>
+	<a href={postLink} class="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2" data-astro-prefetch aria-label={`Read article: ${post.Title}`}>
+		{/* Featured image section with white border/padding */}
+		<div class="p-4 bg-white">
+			<div class="aspect-[4/3] overflow-hidden bg-gray-100">
+				{firstImageUrl ? (
+					<img 
+						src={firstImageUrl} 
+						alt={`Featured image for ${post.Title}`}
+						class="portfolio-image h-full w-full object-cover"
+						style="opacity: 0; transition: opacity 0.3s ease, transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94); transform: scale(1);"
+						loading="eager"
+						decoding="async"
+						onload="this.style.opacity='1'"
+						onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'"
+					/>
+				) : null}
+				<!-- Always include fallback div, shown when image fails -->
+				<div class="flex h-full w-full items-center justify-center bg-gray-100" style={firstImageUrl ? "display: none;" : ""}>
+					<Icon
+						class="h-16 w-16 text-gray-300"
+						name="image"
+						aria-hidden="true"
+					/>
+				</div>
+			</div>
+		</div>
+		
+		<!-- Content section with white border/padding -->
+		<div class="px-4 pb-4 bg-white">
+			<!-- Date and metadata header -->
+			<div class="mb-4 flex items-start justify-between">
+				<div class="flex items-center gap-2">
+					<FormattedDate date={new Date(post.Date + 'T00:00:00')} class="text-sm text-gray-500 font-normal" />
+					{
+						showPin && post.Pinned && (
+							<Icon
+								class="h-3 w-3 text-red-500"
+								name={"pin"}
+								aria-label="Pinned Post"
+								focusable="false"
+							/>
+						)
+					}
+				</div>
+				{/* Tags in top-right - rounded pills with Notion colors */}
+				{post.Tags && post.Tags.length > 0 && (
+					<div class="flex flex-wrap gap-1">
+						{post.Tags.slice(0, 1).map((tag) => (
+							<a
+								class={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium transition-colors hover:opacity-80 ${getNotionColorToTailwindColor(
+									tag.color + "-background",
+									true,
+								)}`}
+								aria-label={`View more blogs with the tag ${tag.name}`}
+								href={getNavLink("/tags/" + slugify(tag.name) + "/")}
+							>
+								{tag.name}
+							</a>
+						))}
+						{post.Tags.length > 1 && (
+							<span class="text-[10px] text-gray-500 ml-1">+{post.Tags.length - 1} more</span>
+						)}
+					</div>
+				)}
+			</div>
+			
+			<!-- Title -->
+			<Tag class="mb-4 text-lg font-bold text-gray-900 leading-tight line-clamp-2" id={`post-title-${post.PageId}`}>
+				{post.Title}
+			</Tag>
+			
+			<!-- Description/Excerpt -->
+			{post.Excerpt && (
+				<p class="text-gray-600 mb-6 leading-relaxed text-sm line-clamp-3">
+					{post.Excerpt}
+				</p>
+			)}
+			
+			<!-- Read More link -->
+			<div class="text-xs font-bold uppercase tracking-wider text-gray-900 group-hover:text-accent transition-colors">
+				READ MORE
+			</div>
+		</div>
+	</a>
+</article>
+
+<script>
+	// Add smooth hover zoom effect to portfolio images
+	document.addEventListener('DOMContentLoaded', function() {
+		const articles = document.querySelectorAll('article');
+		
+		articles.forEach(article => {
+			const image = article.querySelector('.portfolio-image');
+			if (image) {
+				article.addEventListener('mouseenter', () => {
+					image.style.transform = 'scale(1.05)';
+				});
+				
+				article.addEventListener('mouseleave', () => {
+					image.style.transform = 'scale(1)';
+				});
+			}
+		});
+	});
+</script>

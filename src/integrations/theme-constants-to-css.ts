@@ -285,7 +285,7 @@ ${createCssVariables("dark")}
   }
 
   .title {
-    @apply text-3xl font-bold text-accent-2;
+    @apply text-5xl font-black text-accent-2 tracking-wider;
   }
 }
 

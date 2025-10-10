@@ -64,6 +64,15 @@ export const HEADING_BLOCKS = key_value_from_json["heading-blocks"] || [
 
 export const FULL_PREVIEW_COLLECTIONS = key_value_from_json["full-preview-collections"] || [];
 
+// manual-edit: Added medium preview collections configuration
+export const MEDIUM_PREVIEW_COLLECTIONS = key_value_from_json["medium-preview-collections"] || [];
+
+// manual-edit: Added news feed collections configuration
+export const NEWS_FEED_COLLECTIONS = key_value_from_json["news-feed-collections"] || [];
+
+// manual-edit: Added navigation order configuration
+export const NAV_ORDER = key_value_from_json["nav-order"] || [];
+
 export const HIDE_UNDERSCORE_SLUGS_IN_LISTS =
 	key_value_from_json["hide-underscore-slugs-in-lists"] || false;
 
@@ -104,6 +113,7 @@ console.log("Last Build Start Time:", LAST_BUILD_TIME);
 export const REFERENCES = key_value_from_json["references"] || null;
 
 export const RECENT_POSTS_ON_HOME_PAGE = key_value_from_json["recent-posts-on-home-page"] || false;
+export const HOMEPAGE_COLLECTIONS = key_value_from_json["homepage-collections"] || {};
 
 export const SOCIALS = key_value_from_json["socials"] || {};
 

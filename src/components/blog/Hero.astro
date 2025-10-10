@@ -26,7 +26,7 @@ const dateTimeOptions: Intl.DateTimeFormatOptions = {
 {post.Excerpt && <q class="mb-2 block italic">{post.Excerpt}</q>}
 <div class="flex max-w-full flex-wrap items-center gap-x-3 gap-y-2">
 	<p class="font-semibold">
-		<FormattedDate date={new Date(post.Date)} dateTimeOptions={dateTimeOptions} />
+		<FormattedDate date={new Date(post.Date + 'T00:00:00')} dateTimeOptions={dateTimeOptions} />
 	</p>
 	{
 		post.Date && post.LastUpdatedDate && areDifferentDates(post.Date, post.LastUpdatedDate) && (

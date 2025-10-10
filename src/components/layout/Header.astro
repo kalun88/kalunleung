@@ -24,7 +24,7 @@ const rss_path = getNavLink("/rss.xml");
 
 <header
 	id="main-header"
-	class="group relative mb-8 flex w-full items-center justify-between sm:ps-[4.5rem] lg:-ml-[25%] lg:w-[150%]"
+	class="group relative mb-8 flex w-full items-center justify-between lg:w-[125%]"
 >
 	<div class="flex sm:flex-col">
 		<a
@@ -74,7 +74,7 @@ const rss_path = getNavLink("/rss.xml");
 				menuLinks.map((link) => (
 					<a
 						href={link.path}
-						class="sm:hover:decoration-accent-2/40 w-full px-4 py-4 text-right underline-offset-4 sm:w-auto sm:py-0 sm:text-left sm:hover:underline sm:hover:decoration-wavy"
+						class="sm:hover:decoration-accent-2/40 w-full px-4 py-4 text-right underline-offset-4 sm:w-auto sm:py-0 sm:text-left sm:hover:underline sm:hover:decoration-wavy whitespace-pre-line"
 						aria-current={url.pathname === link.path ? "page" : false}
 						data-astro-prefetch
 					>
@@ -85,15 +85,22 @@ const rss_path = getNavLink("/rss.xml");
 		</nav>
 	</div>
 	<div class="flex flex-row print:hidden">
+		<!-- manual-edit: Hidden RSS button but keeping functionality intact -->
 		<div
-			class="hover:text-accent hover:ring-accent-400 h-10 w-10 cursor-pointer items-center justify-center rounded-md p-1.5 hover:ring-2"
+			class="hover:text-accent hover:ring-accent-400 h-10 w-10 cursor-pointer items-center justify-center rounded-md p-1.5 hover:ring-2 hidden"
 		>
 			<a href={rss_path}
 				><Icon name={"rss"} class="hover:text-accent h-7 w-7" aria-label="Open RSS Link" /></a
 			>
 		</div>
-		<Search />
-		<ThemeIcon />
+		<!-- manual-edit: Hidden search button but keeping Search component intact -->
+		<div class="hidden">
+			<Search />
+		</div>
+		<!-- manual-edit: Hidden theme toggle button to force light mode -->
+		<div class="hidden">
+			<ThemeIcon />
+		</div>
 		<mobile-button class="flex items-center">
 			<button
 				id="toggle-navigation-menu"

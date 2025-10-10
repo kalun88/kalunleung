@@ -1,7 +1,7 @@
 //NOTE ADDED
 import { getAllPages, getDataSource } from "@/lib/notion/client";
 import type { Block, BlockTypes } from "@/lib/interfaces";
-import { MENU_PAGES_COLLECTION, HOME_PAGE_SLUG } from "@/constants";
+import { MENU_PAGES_COLLECTION, HOME_PAGE_SLUG, HIDE_UNDERSCORE_SLUGS_IN_LISTS, NAV_ORDER } from "@/constants";
 import { slugify } from "@/utils/slugify";
 import { getNavLink } from "@/lib/blog-helpers";
 export { getFormattedDate, getFormattedDateWithTime, areDifferentDates } from "@/utils/date";
@@ -41,6 +41,38 @@ export async function getCollectionsWDesc() {
 export async function getMenu(): Promise<
 	{ title: string; path: string; children?: { title: string; path: string }[] }[]
 > {
+	// If nav-order is configured, use it for complete control
+	if (NAV_ORDER && NAV_ORDER.length > 0) {
+		const pages = await getAllPages();
+		const collections = await getCollections();
+		
+		const menuItems = [];
+		
+		for (const item of NAV_ORDER) {
+			if (item.type === 'page' && item.slug) {
+				// Find the page by slug
+				const page = pages.find(p => p.Slug === item.slug);
+				if (page) {
+					menuItems.push({
+						title: item.title || page.Title,
+						path: getNavLink(page.Slug === HOME_PAGE_SLUG ? "/" : "/" + page.Slug),
+					});
+				}
+			} else if (item.type === 'collection' && item.name) {
+				// Check if collection exists
+				if (collections.includes(item.name)) {
+					menuItems.push({
+						title: item.title || item.name,
+						path: getNavLink("/collections/" + slugify(item.name)),
+					});
+				}
+			}
+		}
+		
+		return menuItems;
+	}
+
+	// Fallback to original logic if no nav-order is configured
 	const pages = await getAllPages();
 	const collections = await getCollections();
 	const collectionLinks = collections.map((name) => ({
@@ -48,7 +80,11 @@ export async function getMenu(): Promise<
 		path: getNavLink("/collections/" + slugify(name)),
 	}));
 
-	const pageLinks = pages
+	const filteredPages = HIDE_UNDERSCORE_SLUGS_IN_LISTS
+		? pages.filter((page) => !page.Slug.startsWith("_"))
+		: pages;
+
+	const pageLinks = filteredPages
 		.map((page) => ({
 			...page,
 			// Assign rank -1 to homePageSlug and 99 to pages with no rank

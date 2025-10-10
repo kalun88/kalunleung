@@ -33,7 +33,7 @@ const id = buildHeadingId(block.Heading1);
 				</div>
 				<span class="inline">
 					<h2
-						class={`toggle-h2 mt-8 mb-1 inline cursor-pointer text-2xl font-semibold ${setId ? "hasId" : "noId"}`}
+						class={`toggle-h2 mt-8 mb-1 inline cursor-pointer text-5xl font-black text-accent-2 tracking-wider ${setId ? "hasId" : "noId"}`}
 						id={setId ? id : undefined}
 						onclick="
         var fullUrl = `${window.location.origin}${window.location.pathname}#${id}`;
@@ -59,7 +59,7 @@ const id = buildHeadingId(block.Heading1);
 		</details>
 	) : (
 		<h2
-			class={`mt-8 mb-1 cursor-pointer text-2xl font-semibold ${setId ? "hasId" : "noId"}`}
+			class={`mt-8 mb-1 cursor-pointer text-5xl font-black text-accent-2 tracking-wider ${setId ? "hasId" : "noId"}`}
 			id={setId ? id : undefined}
 			onclick="
         var fullUrl = `${window.location.origin}${window.location.pathname}#${id}`;

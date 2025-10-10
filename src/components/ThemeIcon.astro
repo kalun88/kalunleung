@@ -46,10 +46,14 @@ const { order = 0 } = Astro.props;
 
 <script is:inline>
 	const getThemePreference = () => {
+		// manual-edit: Always return 'light' to force light mode only
+		return "light";
+		/* manual-edit: Original theme preference logic (commented out)
 		if (typeof localStorage !== "undefined" && localStorage.getItem("theme")) {
 			return localStorage.getItem("theme");
 		}
 		return "system";
+		*/
 	};
 
 	const updateTheme = () => {
@@ -71,6 +75,9 @@ const { order = 0 } = Astro.props;
 	updateTheme();
 
 	const handleToggleClick = () => {
+		// manual-edit: Disabled theme switching - always stay in light mode
+		return;
+		/* manual-edit: Original theme switching logic (commented out)
 		const theme = getThemePreference();
 		let newTheme = "system";
 
@@ -80,6 +87,7 @@ const { order = 0 } = Astro.props;
 
 		localStorage.setItem("theme", newTheme);
 		updateTheme();
+		*/
 	};
 
 	document.getElementById("themeToggle").addEventListener("click", handleToggleClick);

@@ -1,0 +1,161 @@
+---
+import type { Post } from "@/lib/interfaces";
+import { extractTargetBlocks, filePath, getPostLink, getNavLink } from "@/lib/blog-helpers";
+import { getPostContentByPostId } from "@/lib/notion/client";
+import { MENU_PAGES_COLLECTION } from "@/constants";
+import NotionBlocks from "@/components/NotionBlocks.astro";
+import FormattedDate from "@/components/FormattedDate.astro";
+import Icon from "@/components/Icon.astro";
+import { getNotionColorToTailwindColor } from "@/lib/style-helpers";
+import { slugify } from "@/utils";
+
+interface Props {
+	post: Post;
+	enableBorder?: boolean;
+	isLast?: boolean;
+}
+
+const { post, enableBorder = true, isLast = false } = Astro.props;
+
+const posttags = post.Tags ?? [];
+
+// Use the same date handling as PostPreviewMedium
+const postDate = post.Date ? new Date(post.Date + 'T00:00:00') : null;
+
+// Use the same link generation as PostPreviewMedium
+const postLink = getPostLink(post.Slug, post.Collection === MENU_PAGES_COLLECTION);
+
+// Get content blocks for image only
+const { blocks } = await getPostContentByPostId(post);
+
+// Look for the first image in the content
+let firstImageUrl = "";
+const imageBlock = blocks.find(block => block.Type === "image" && block.NImage);
+
+if (imageBlock && imageBlock.NImage) {
+	const imageData = imageBlock.NImage;
+	
+	if (imageData.File && imageData.File.Url) {
+		try {
+			// Use OptimizedUrl if available, otherwise Url
+			const imageUrl = imageData.File.OptimizedUrl || imageData.File.Url;
+			firstImageUrl = filePath(new URL(imageUrl));
+		} catch (err) {
+			console.log(`Image URL error for ${post.Title}:`, err);
+		}
+	} else if (imageData.External && imageData.External.Url) {
+		firstImageUrl = imageData.External.Url;
+	}
+}
+
+const borderClasses = enableBorder && !isLast ? "border-b border-slate-200 pb-4 mb-4" : "";
+---
+
+<article class={`news-feed-item group relative ${borderClasses}`}>
+	<div class="flex flex-col lg:flex-row gap-3 lg:gap-4">
+		<!-- Content Section (Left) -->
+		<div class={`flex flex-col justify-center ${firstImageUrl ? 'lg:w-2/3' : 'w-full'}`}>
+			<header class="mb-2">
+				<!-- Date and metadata -->
+				<div class="mb-1 flex items-center justify-between">
+					<div class="flex items-center gap-2">
+						{postDate && (
+							<FormattedDate date={postDate} class="text-xs text-gray-500 font-normal" />
+						)}
+						{
+							post.Pinned && (
+								<Icon
+									class="h-3 w-3 text-red-500"
+									name={"pin"}
+									aria-label="Pinned Post"
+									focusable="false"
+								/>
+							)
+						}
+					</div>
+					{/* Tags */}
+					{posttags.length > 0 && (
+						<div class="flex flex-wrap gap-1">
+							{posttags.slice(0, 3).map((tag) => (
+								<a
+									class={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium transition-colors hover:opacity-80 ${getNotionColorToTailwindColor(
+										tag.color + "-background",
+										true,
+									)}`}
+									aria-label={`View more blogs with the tag ${tag.name}`}
+									href={getNavLink("/tags/" + slugify(tag.name) + "/")}
+								>
+									{tag.name}
+								</a>
+							))}
+							{posttags.length > 3 && (
+								<span class="text-[10px] text-slate-500 ml-1">+{posttags.length - 3} more</span>
+							)}
+						</div>
+					)}
+				</div>
+				
+				<!-- Title -->
+				<h2 class="text-lg lg:text-xl font-bold text-slate-900 group-hover:text-blue-600 transition-colors duration-200 mb-2">
+					<a href={postLink} class="hover:underline">
+						{post.Title}
+					</a>
+				</h2>
+			</header>
+			
+			<!-- Excerpt (2 lines max) -->
+			{post.Excerpt && (
+				<div class="mb-2 text-slate-600 line-clamp-2 text-xs leading-relaxed">
+					{post.Excerpt}
+				</div>
+			)}
+			
+			<!-- Read More Link -->
+			<div class="flex items-center justify-between">
+				<a 
+					href={postLink}
+					class="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium text-xs group-hover:translate-x-1 transition-all duration-200"
+				>
+					Read more
+					<Icon name="arrow-right" class="w-3 h-3 ml-1" />
+				</a>
+				
+				<!-- Optional: Author info if available -->
+				{post.Author && (
+					<div class="flex items-center text-xs text-slate-500">
+						<span>by {post.Author}</span>
+					</div>
+				)}
+			</div>
+		</div>
+		
+		<!-- Image Section (Right) -->
+		{firstImageUrl && (
+			<div class="lg:w-1/3 flex-shrink-0 order-first lg:order-last">
+				<a 
+					href={postLink} 
+					class="block aspect-video overflow-hidden rounded-md bg-slate-100 group-hover:shadow-lg transition-all duration-300"
+				>
+					<img 
+						src={firstImageUrl} 
+						alt={post.Title}
+						class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+					/>
+				</a>
+			</div>
+		)}
+	</div>
+</article>
+
+<style>
+.line-clamp-2 {
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+
+.news-feed-item:hover .prose {
+	color: rgb(71 85 105);
+}
+</style>
