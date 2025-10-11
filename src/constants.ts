@@ -96,6 +96,24 @@ export const SHORTCODES = key_value_from_json["shortcodes"] || {
 	table: "",
 };
 
+export const TWO_COLUMN_LAYOUT = key_value_from_json["two-column-layout"] || {
+	"column-1-width": "50%",
+	"column-2-width": "50%"
+};
+
+export const THREE_COLUMN_LAYOUT = key_value_from_json["three-column-layout"] || {
+	"column-1-width": "20%",
+	"column-2-width": "50%",
+	"column-3-width": "30%"
+};
+
+export const FOUR_COLUMN_LAYOUT = key_value_from_json["four-column-layout"] || {
+	"column-1-width": "25%",
+	"column-2-width": "25%",
+	"column-3-width": "25%",
+	"column-4-width": "25%"
+};
+
 // Function to read the build start time from the file
 const readBuildStartTime = () => {
 	const filePath = path.join(BUILD_FOLDER_PATHS["tmp"], "build_start_timestamp.txt");

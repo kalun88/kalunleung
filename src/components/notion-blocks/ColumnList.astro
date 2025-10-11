@@ -1,6 +1,7 @@
 ---
 import * as interfaces from "@/lib/interfaces.ts";
 import NotionBlocks from "@/components/NotionBlocks.astro";
+import { TWO_COLUMN_LAYOUT, THREE_COLUMN_LAYOUT, FOUR_COLUMN_LAYOUT } from "@/constants";
 
 export interface Props {
 	block: interfaces.Block;
@@ -9,14 +10,48 @@ export interface Props {
 }
 
 const { block, renderChildren = true, setId = true } = Astro.props;
+
+// Determine column layout type for configurable sizing
+const columnCount = block.ColumnList.Columns.length;
+const isTwoColumn = columnCount === 2;
+const isThreeColumn = columnCount === 3;
+const isFourColumn = columnCount === 4;
 ---
 
 <div class="mx-auto my-4 block w-full max-w-full flex-wrap gap-x-4 sm:flex md:flex-nowrap">
 	{
-		block.ColumnList.Columns.map((column: interfaces.Column) => (
-			<div class="ncolumns w-full max-w-full min-w-0 flex-1 basis-44 sm:w-44 md:w-auto">
-				<NotionBlocks blocks={column.Children} renderChildren={renderChildren} setId={setId} />
-			</div>
-		))
+		block.ColumnList.Columns.map((column: interfaces.Column, index: number) => {
+			let columnClasses = "ncolumns w-full max-w-full min-w-0";
+			let inlineStyle = "";
+			
+			if (isTwoColumn) {
+				// Use configurable percentage widths for 2-column layouts
+				const widthKey = `column-${index + 1}-width` as keyof typeof TWO_COLUMN_LAYOUT;
+				const width = TWO_COLUMN_LAYOUT[widthKey];
+				columnClasses += " sm:flex-shrink-0 sm:flex-grow-0";
+				inlineStyle = `width: ${width}`;
+			} else if (isThreeColumn) {
+				// Use configurable percentage widths for 3-column layouts
+				const widthKey = `column-${index + 1}-width` as keyof typeof THREE_COLUMN_LAYOUT;
+				const width = THREE_COLUMN_LAYOUT[widthKey];
+				columnClasses += " sm:flex-shrink-0 sm:flex-grow-0";
+				inlineStyle = `width: ${width}`;
+			} else if (isFourColumn) {
+				// Use configurable percentage widths for 4-column layouts
+				const widthKey = `column-${index + 1}-width` as keyof typeof FOUR_COLUMN_LAYOUT;
+				const width = FOUR_COLUMN_LAYOUT[widthKey];
+				columnClasses += " sm:flex-shrink-0 sm:flex-grow-0";
+				inlineStyle = `width: ${width}`;
+			} else {
+				// 5+ column layouts: use original equal distribution
+				columnClasses += " flex-1 basis-44 sm:w-44 md:w-auto";
+			}
+			
+			return (
+				<div class={columnClasses} style={inlineStyle}>
+					<NotionBlocks blocks={column.Children} renderChildren={renderChildren} setId={setId} />
+				</div>
+			);
+		})
 	}
 </div>
