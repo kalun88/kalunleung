@@ -217,7 +217,7 @@ if (pageFound && page.Slug === HOME_PAGE_SLUG && HOMEPAGE_COLLECTIONS && Object.
 						ogImage: `/og-image/${page.Slug}.png`,
 				}}
 		>
-				<div class="max-w-[708px] sm:mr-20 print:max-w-full print:mr-auto">
+				<div class="max-w-[1200px] sm:ml-8 print:max-w-full print:ml-0">
 						<article class="break-words" data-pagefind-body>
 								{shouldUseCache && cachedHtml ? (
 										<div class="post-body" data-html-type="cached" set:html={cachedHtml}></div>
@@ -232,7 +232,7 @@ if (pageFound && page.Slug === HOME_PAGE_SLUG && HOMEPAGE_COLLECTIONS && Object.
 				{/* New Granular Homepage Collections */}
 				{Object.entries(homepage_collections).map(([collectionName, data]) => (
 					data.posts && data.posts.length > 0 && (
-						<div key={collectionName} class="max-w-[708px] sm:mr-20 print:max-w-full print:mr-auto">
+										<div key={collectionName} class="max-w-[708px] sm:ml-8 print:max-w-full print:ml-0">
 							<a href={`#auto-${collectionName.toLowerCase().replace(/[^a-z0-9]/g, '-')}`} id={`auto-${collectionName.toLowerCase().replace(/[^a-z0-9]/g, '-')}`} class="inline" onclick="var fullUrl = `${window.location.origin}${window.location.pathname}#${id}`; navigator.clipboard.writeText(fullUrl);">
 								<h2 class="mb-4 mt-8 text-2xl font-normal hasId">
 									<strong class="font-semibold">{data.config.title}</strong>
