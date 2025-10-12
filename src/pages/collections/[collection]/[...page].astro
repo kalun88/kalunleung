@@ -5,12 +5,13 @@ import PostPreview from "@/components/blog/PostPreview.astro";
 import PostPreviewFull from "@/components/blog/PostPreviewFull.astro";
 import PostPreviewMedium from "@/components/blog/PostPreviewMedium.astro";
 import PostPreviewNewsFeed from "@/components/blog/PostPreviewNewsFeed.astro";
+import PostPreviewWide from "@/components/blog/PostPreviewWide.astro";
 import Pagination from "@/components/Paginator.astro";
 import { getAllPosts, getUniqueTags, getAllTagsWithCounts } from "@/lib/notion/client";
 import type { Post, SelectProperty } from "@/lib/interfaces";
 import { getCollectionsWDesc, slugify } from "@/utils";
 import { getNotionColorToTailwindColor } from "@/lib/style-helpers";
-import { FULL_PREVIEW_COLLECTIONS, MEDIUM_PREVIEW_COLLECTIONS, NEWS_FEED_COLLECTIONS, HIDE_UNDERSCORE_SLUGS_IN_LISTS, NUMBER_OF_POSTS_PER_PAGE, LAST_BUILD_TIME } from "@/constants";
+import { FULL_PREVIEW_COLLECTIONS, MEDIUM_PREVIEW_COLLECTIONS, NEWS_FEED_COLLECTIONS, WIDE_PREVIEW_COLLECTIONS, HIDE_UNDERSCORE_SLUGS_IN_LISTS, NUMBER_OF_POSTS_PER_PAGE, LAST_BUILD_TIME } from "@/constants";
 import { getNavLink, resetCurrentHeadings, resetFirstImage, getReferencesInPage } from "@/lib/blog-helpers";
 import Icon from '@/components/Icon.astro';
 
@@ -112,78 +113,80 @@ const paginationProps = {
 };
 ---
 
-	<PageLayout meta={meta}>
-		<div class="max-w-[708px] sm:ml-8 print:max-w-full print:ml-0 mb-8">
+		<PageLayout meta={meta}>
+			<div class="max-w-none sm:max-w-[98vw] lg:max-w-[96vw] xl:max-w-[1600px] sm:ml-8 print:ml-0 print:max-w-full mb-8">
 			<h1 class="title mt-8 mb-4">{collection}</h1>
 			{description && <q class="block italic mb-6 -mt-3">{description}</q>}
 		</div>
-		{/* manual-edit: Updated grid layout to support medium previews and news feed */}
-		<div class={`grid gap-y-16 sm:ml-8 print:ml-0 ${MEDIUM_PREVIEW_COLLECTIONS.includes(collection) || NEWS_FEED_COLLECTIONS.includes(collection) ? 'grid-cols-1' : 'grid-cols-3 sm:grid-cols-4'} sm:items-start sm:gap-x-8`}>
-				<section aria-label="Blog post list" class={MEDIUM_PREVIEW_COLLECTIONS.includes(collection) || NEWS_FEED_COLLECTIONS.includes(collection) ? "col-span-1 print:col-span-full" : "col-span-3 print:col-span-full"}>
-						{/* News feed layout */}
-						{NEWS_FEED_COLLECTIONS.includes(collection) ? (
-							<div class="news-feed-container space-y-0">
-								{
-									resetFirstImage() && postsWithCacheInfo.map(({ post, shouldUseCache, postLastUpdatedBeforeLastBuild }, index) => (
-										<PostPreviewNewsFeed 
-											post={post} 
-											isLast={index === postsWithCacheInfo.length - 1}
-										/>
-									))
-								}
-							</div>
-						) : MEDIUM_PREVIEW_COLLECTIONS.includes(collection) ? (
-							<div class="portfolio-cards grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-								<style>
-									.portfolio-cards > * {
-										margin-right: -1px;
-										margin-bottom: -1px;
-									}
-								</style>
-								{
-									resetFirstImage() && postsWithCacheInfo.map(({ post, shouldUseCache, postLastUpdatedBeforeLastBuild }) => (
-										<PostPreviewMedium post={post} as="h2" />
-									))
-								}
-							</div>
-						) : FULL_PREVIEW_COLLECTIONS.includes(collection) ? (
-							<div class="full-content-feed space-y-0">
-								<style>
-									.full-content-feed-item:not(:last-child) {
-										border-bottom: 1px solid rgb(226 232 240);
-										padding-bottom: 1rem;
-										margin-bottom: 1rem;
-									}
-									.full-content-feed-item:last-child {
-										padding-bottom: 0;
-									}
-								</style>
-								{
-									resetFirstImage() && postsWithCacheInfo.map(({ post, shouldUseCache, postLastUpdatedBeforeLastBuild }) => {
-										resetCurrentHeadings();
-										return (
-											<PostPreviewFull
-												post_full_preview={post}
-												shouldUseCache={shouldUseCache}
-												postLastUpdatedBeforeLastBuild={postLastUpdatedBeforeLastBuild}
-												as="h2"
-												withDesc
+		{/* manual-edit: Updated grid layout to support medium previews and news feed with sidebar */}
+		<div class="grid grid-cols-3 sm:grid-cols-4 gap-y-16 sm:ml-8 print:ml-0 max-w-none sm:max-w-[98vw] lg:max-w-[96vw] xl:max-w-[1500px] print:max-w-full sm:items-start sm:gap-x-8">
+				<section aria-label="Blog post list" class="col-span-3 print:col-span-full">
+							{/* News feed layout */}
+							{NEWS_FEED_COLLECTIONS.includes(collection) ? (
+								<div class="news-feed-container space-y-0 max-w-none sm:max-w-[90vw] lg:max-w-[85vw] xl:max-w-[1200px]">
+									{
+										resetFirstImage() && postsWithCacheInfo.map(({ post, shouldUseCache, postLastUpdatedBeforeLastBuild }, index) => (
+											<PostPreviewNewsFeed 
+												post={post} 
+												isLast={index === postsWithCacheInfo.length - 1}
 											/>
-										);
-									})
-								}
-							</div>
-						) : (
-							<ul class="space-y-4 text-start">
-								{
-									resetFirstImage() && postsWithCacheInfo.map(({ post, shouldUseCache, postLastUpdatedBeforeLastBuild }) => (
-										<li class="flex flex-col max-w-full flex-wrap gap-1.5 [&_q]:basis-full">
-											<PostPreview post={post} as="h2" withDesc />
-										</li>
-									))
-								}
-							</ul>
-						)}
+										))
+									}
+								</div>
+							) : MEDIUM_PREVIEW_COLLECTIONS.includes(collection) ? (
+								<div class="portfolio-cards grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-none sm:max-w-[90vw] lg:max-w-[85vw] xl:max-w-[1100px]">
+									{
+										resetFirstImage() && postsWithCacheInfo.map(({ post, shouldUseCache, postLastUpdatedBeforeLastBuild }) => (
+											<PostPreviewMedium post={post} as="h2" />
+										))
+									}
+								</div>
+							) : WIDE_PREVIEW_COLLECTIONS.includes(collection) ? (
+								<div class="wide-feed-container space-y-0 max-w-none sm:max-w-[90vw] lg:max-w-[85vw] xl:max-w-[1200px]">
+									{
+										resetFirstImage() && postsWithCacheInfo.map(({ post, shouldUseCache, postLastUpdatedBeforeLastBuild }) => (
+											<PostPreviewWide post={post} as="h2" />
+										))
+									}
+								</div>
+							) : FULL_PREVIEW_COLLECTIONS.includes(collection) ? (
+								<div class="full-content-feed space-y-0 max-w-none sm:max-w-[90vw] lg:max-w-[85vw] xl:max-w-[1000px]">
+									<style>
+										.full-content-feed-item:not(:last-child) {
+											border-bottom: 1px solid rgb(226 232 240);
+											padding-bottom: 1rem;
+											margin-bottom: 1rem;
+										}
+										.full-content-feed-item:last-child {
+											padding-bottom: 0;
+										}
+									</style>
+									{
+										resetFirstImage() && postsWithCacheInfo.map(({ post, shouldUseCache, postLastUpdatedBeforeLastBuild }) => {
+											resetCurrentHeadings();
+											return (
+												<PostPreviewFull
+													post_full_preview={post}
+													shouldUseCache={shouldUseCache}
+													postLastUpdatedBeforeLastBuild={postLastUpdatedBeforeLastBuild}
+													as="h2"
+													withDesc
+												/>
+											);
+										})
+									}
+								</div>
+							) : (
+								<ul class="space-y-4 text-start">
+									{
+										resetFirstImage() && postsWithCacheInfo.map(({ post, shouldUseCache, postLastUpdatedBeforeLastBuild }) => (
+											<li class="flex flex-col max-w-full flex-wrap gap-1.5 [&_q]:basis-full">
+												<PostPreview post={post} as="h2" withDesc />
+											</li>
+										))
+									}
+								</ul>
+							)}
 						<Pagination {...paginationProps} />
 						<Pagination {...paginationProps} />
 				</section>
@@ -194,25 +197,23 @@ const paginationProps = {
 								<Icon class="h-4 w-4 mr-1" name={"tag-multiple"} aria-hidden="true" focusable="false"/>
 								Tags
 							</h2>
-							<ul class="flex flex-wrap gap-1">
+							<ul class="flex flex-col gap-1 font-mono text-xs">
 								{uniqueTags.map((tag) => (
-									<li>
+									<li class="flex items-center">
 										<a
-											class={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium transition-colors hover:opacity-80 ${getNotionColorToTailwindColor(
-												tag.color + "-background", true
-											)}`}
+											class="inline-flex items-center transition-opacity hover:opacity-80"
 											href={getNavLink("/tags/" + slugify(tag.name) + "/")}
 											aria-label={`View all posts with the tag: ${tag.name}`}
 										>
-											{tag.name}
-											<span class="ml-1 rounded-full bg-black/10 px-1 text-[9px] text-gray-700 dark:bg-white/20 dark:text-gray-300">
-												{tag.count}
-											</span>
+											[{tag.name}]
 										</a>
+										<span class="ml-1 text-[10px] text-gray-500">
+											{tag.count}
+										</span>
 									</li>
 								))}
 							</ul>
-							<span class="mt-2 block sm:text-end">
+							<div class="mt-2">
 								<a
 									class="text-xs text-accent-2 sm:hover:text-accent transition-colors"
 									href={getNavLink("/tags/")}
@@ -220,7 +221,7 @@ const paginationProps = {
 								>
 									View all →
 								</a>
-							</span>
+							</div>
 						</aside>
 					)
 				}

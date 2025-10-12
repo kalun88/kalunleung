@@ -9,20 +9,26 @@ import Icon from "@/components/Icon.astro";
 	<button
 		data-open-modal
 		disabled
-		class="hover:text-accent hover:ring-accent-400 flex h-10 w-10 cursor-pointer items-center justify-center rounded-md transition-all hover:ring-2"
+		class="hover:text-accent focus-visible:text-accent flex h-10 w-10 cursor-pointer items-center justify-center rounded-md motion-safe:transition-all hover:ring-2 hover:ring-accent-400 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent contrast-more:ring-4 pointer-coarse:h-12 pointer-coarse:w-12"
 		aria-label="Open search"
+		aria-describedby="search-description"
+		aria-expanded="false"
 	>
 		<Icon class="h-7 w-7" name={"search"} />
 	</button>
 	<dialog
-		aria-label="search"
-		class="bg-bgColor/80 h-full max-h-full w-full max-w-full border border-zinc-400 shadow-sm backdrop:backdrop-blur-sm sm:mx-auto sm:mt-16 sm:mb-auto sm:h-max sm:max-h-[calc(100%-8rem)] sm:min-h-[15rem] sm:w-5/6 sm:max-w-[48rem] sm:rounded-lg"
+		aria-label="Search dialog"
+		aria-describedby="search-help"
+		role="dialog"
+		aria-modal="true"
+		class="bg-bgColor/80 h-full max-h-full w-full max-w-full border border-zinc-400 shadow-sm backdrop:backdrop-blur-sm forced-colors:border-4 sm:mx-auto sm:mt-16 sm:mb-auto sm:h-max sm:max-h-[calc(100%-8rem)] sm:min-h-[15rem] sm:w-5/6 sm:max-w-[48rem] sm:rounded-lg"
 	>
 		<div class="dialog-frame flex flex-col gap-4 p-6 pt-12 sm:pt-6">
 			<button
 				data-close-modal
-				class="ms-auto cursor-pointer rounded-md bg-zinc-200 p-2 font-semibold dark:bg-zinc-700"
+				class="ms-auto cursor-pointer rounded-md bg-zinc-200 p-2 font-semibold dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-safe:transition-colors contrast-more:ring-4 pointer-coarse:p-3"
 				aria-label="Close Search"
+				type="button"
 				><Icon class="inline h-6 w-6" name={"close"} aria-hidden="true" /></button
 			>
 			{
@@ -41,6 +47,12 @@ import Icon from "@/components/Icon.astro";
 			}
 		</div>
 	</dialog>
+	<div id="search-description" class="sr-only">
+		Search through all site content
+	</div>
+	<div id="search-help" class="sr-only">
+		Use arrow keys to navigate results, Enter to select, Escape to close
+	</div>
 </site-search>
 
 <script>
@@ -163,15 +175,38 @@ import Icon from "@/components/Icon.astro";
 
 		openModal = (event?: MouseEvent) => {
 			this.dialog.showModal();
+			this.openBtn.setAttribute("aria-expanded", "true");
+			this.dialog.setAttribute("aria-hidden", "false");
 			this.querySelector("input")?.focus();
 			event?.stopPropagation();
 			window.addEventListener("click", this.onWindowClick);
+			
+			// Announce to screen readers
+			const announcement = document.createElement("div");
+			announcement.setAttribute("aria-live", "polite");
+			announcement.setAttribute("aria-atomic", "true");
+			announcement.className = "sr-only";
+			announcement.textContent = "Search dialog opened";
+			document.body.appendChild(announcement);
+			setTimeout(() => document.body.removeChild(announcement), 1000);
 		};
 
 		closeModal = () => {
 			if (this.dialog.open) {
 				this.dialog.close();
+				this.openBtn.setAttribute("aria-expanded", "false");
+				this.dialog.setAttribute("aria-hidden", "true");
+				this.openBtn.focus(); // Return focus to the trigger
 				window.removeEventListener("click", this.onWindowClick);
+				
+				// Announce to screen readers
+				const announcement = document.createElement("div");
+				announcement.setAttribute("aria-live", "polite");
+				announcement.setAttribute("aria-atomic", "true");
+				announcement.className = "sr-only";
+				announcement.textContent = "Search dialog closed";
+				document.body.appendChild(announcement);
+				setTimeout(() => document.body.removeChild(announcement), 1000);
 			}
 		};
 	}

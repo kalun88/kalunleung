@@ -11,13 +11,13 @@ function normalizeColor(value: string): string {
     return value;
   }
   // Otherwise assume it's a space-separated RGB string
-  const parts = value.trim().split(/\s+/).map(Number);
+  const parts = value.trim().split(/\s+/).map(Number).filter(n => !isNaN(n));
   if (parts.length >= 3) {
     const toHex = (num: number): string => {
-      const hex = num.toString(16);
+      const hex = Math.max(0, Math.min(255, num)).toString(16);
       return hex.length === 1 ? "0" + hex : hex;
     };
-    return `#${toHex(parts[0])}${toHex(parts[1])}${toHex(parts[2])}`;
+    return `#${toHex(parts[0]!)}${toHex(parts[1]!)}${toHex(parts[2]!)}`;
   }
   // If the format is unexpected, return the original value as a fallback
   return value;
@@ -130,10 +130,11 @@ export default (): AstroIntegration => ({
         }
       }
 
-      const createCssVariables = (theme) => {
+      const createCssVariables = (theme: string) => {
         let cssContent = "";
         for (const key in theme_config.colors) {
-          let color = theme_config.colors[key][theme];
+          const colorGroup = theme_config.colors[key as keyof typeof theme_config.colors];
+          let color = colorGroup[theme as keyof typeof colorGroup];
           let cssValue;
           // If no color is defined, use defaults in hex format
           if (!color) {
@@ -176,6 +177,17 @@ ${createCssVariables("light")}
 ${createCssVariables("dark")}
   }
 
+  /* High contrast mode support */
+  @media (prefers-contrast: more) {
+    :root {
+${createCssVariables("high-contrast-light")}
+    }
+
+    :root.dark {
+${createCssVariables("high-contrast-dark")}
+    }
+  }
+
   html {
     @apply scroll-smooth;
     font-size: 14px;
@@ -186,7 +198,7 @@ ${createCssVariables("dark")}
   }
 
   html body {
-    @apply mx-auto flex min-h-screen max-w-3xl flex-col bg-bgColor px-8 pt-8 text-textColor antialiased overflow-x-hidden;
+    @apply flex min-h-screen flex-col bg-bgColor px-8 pt-8 text-textColor antialiased overflow-x-hidden;
   }
 
   * {

@@ -14,9 +14,10 @@ const { prevUrl, nextUrl } = Astro.props;
 		<nav class="mt-8 flex items-center gap-x-4">
 			{prevUrl && (
 				<a
-					class="text-link me-auto py-2 no-underline hover:underline hover:underline-offset-4"
+					class="text-link me-auto py-2 px-1 no-underline hover:underline hover:underline-offset-4 focus-visible:underline focus-visible:underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent motion-safe:transition-all contrast-more:underline-offset-8 forced-colors:hover:text-LinkText pointer-coarse:py-3 pointer-coarse:px-2"
 					href={prevUrl.url}
 					data-astro-prefetch
+					rel="prev"
 				>
 					{prevUrl.srLabel && <span class="sr-only">{prevUrl.srLabel}</span>}
 					{prevUrl.text ? prevUrl.text : "Previous"}
@@ -24,9 +25,10 @@ const { prevUrl, nextUrl } = Astro.props;
 			)}
 			{nextUrl && (
 				<a
-					class="text-link ms-auto py-2 no-underline hover:underline hover:underline-offset-4"
+					class="text-link ms-auto py-2 px-1 no-underline hover:underline hover:underline-offset-4 focus-visible:underline focus-visible:underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent motion-safe:transition-all contrast-more:underline-offset-8 forced-colors:hover:text-LinkText pointer-coarse:py-3 pointer-coarse:px-2"
 					href={nextUrl.url}
 					data-astro-prefetch
+					rel="next"
 				>
 					{nextUrl.srLabel && <span class="sr-only">{nextUrl.srLabel}</span>}
 					{nextUrl.text ? nextUrl.text : "Next"}

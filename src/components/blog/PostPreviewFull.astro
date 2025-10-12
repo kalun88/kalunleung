@@ -97,64 +97,62 @@ const postLink = getPostLink(
 );
 ---
 
-<article class="full-content-feed-item group relative">
-	<div class="flex flex-col">
+<article class="full-content-feed-item group relative rounded-lg hover:bg-gray-50 transition-colors duration-200">	
+	<div class="flex flex-col p-2">
 		<!-- Header Section -->
 		<header class="mb-2">
-			<!-- Date and metadata -->
-			<div class="mb-1 flex items-center justify-between">
-				<div class="flex items-center gap-2">
-					<FormattedDate date={new Date(post_full_preview.Date + 'T00:00:00')} class="text-xs text-gray-500 font-normal" />
+			<!-- Line 1: Date only -->
+			<div class="mb-1">
+				<a href={postLink} class="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 rounded" data-astro-prefetch aria-label={`Read article: ${post_full_preview.Title}`}>
+					<FormattedDate date={new Date(post_full_preview.Date + 'T00:00:00')} class="text-sm text-gray-500 font-normal hover:text-blue-600 transition-colors" />
+				</a>
+			</div>
+
+			<!-- Line 2: Pin, Title, Tags -->
+			<div class="flex items-center justify-between gap-4">
+				<!-- Left side: Pin and Title -->
+				<div class="flex items-center gap-2 min-w-0 flex-1">
 					{
 						post_full_preview.Pinned && (
 							<Icon
-								class="h-3 w-3 text-red-500"
+								class="h-4 w-4 text-accent flex-shrink-0"
 								name={"pin"}
 								aria-label="Pinned Post"
 								focusable="false"
 							/>
 						)
 					}
+					
+					<!-- Title - clickable -->
+					<a href={postLink} class="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 rounded min-w-0 flex-1" data-astro-prefetch aria-label={`Read article: ${post_full_preview.Title}`}>
+						<Tag class="text-xl font-semibold text-slate-900 hover:text-blue-600 transition-colors duration-200 truncate" id={`post-title-${post_full_preview.PageId}`}>
+							{post_full_preview.Title}
+						</Tag>
+					</a>
 				</div>
-				{/* Tags */}
+				
+				<!-- Right side: Tags -->
 				{post_full_preview.Tags && post_full_preview.Tags.length > 0 && (
-					<div class="flex flex-wrap gap-1">
+					<div class="flex flex-wrap gap-2 justify-end flex-shrink-0 font-mono text-xs">
 						{post_full_preview.Tags.slice(0, 3).map((tag) => (
 							<a
-								class={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium transition-colors hover:opacity-80 ${getNotionColorToTailwindColor(
-									tag.color + "-background",
-									true,
-								)}`}
+								class="inline-flex items-center transition-opacity hover:opacity-80"
 								aria-label={`View more blogs with the tag ${tag.name}`}
 								href={getNavLink("/tags/" + slugify(tag.name) + "/")}
 							>
-								{tag.name}
+								[{tag.name}]
 							</a>
 						))}
 						{post_full_preview.Tags.length > 3 && (
-							<span class="text-[10px] text-gray-500 ml-1">+{post_full_preview.Tags.length - 3} more</span>
+							<span class="text-xs text-gray-500">+{post_full_preview.Tags.length - 3}</span>
 						)}
 					</div>
 				)}
 			</div>
-			
-			<!-- Title -->
-			<Tag class="text-lg lg:text-xl font-bold text-slate-900 group-hover:text-blue-600 transition-colors duration-200 mb-2" id={`post-title-${post_full_preview.PageId}`}>
-				<a href={postLink} class="hover:underline">
-					{post_full_preview.Title}
-				</a>
-			</Tag>
-
-			<!-- Excerpt if available -->
-			{withDesc && post_full_preview.Excerpt && (
-				<div class="mb-2 text-slate-600 text-xs leading-relaxed">
-					{post_full_preview.Excerpt}
-				</div>
-			)}
 		</header>
 		
-		<!-- Full Content Section -->
-		<div class="max-w-none text-sm">
+		<!-- Full Content Section - NOT clickable, preserves embed interactivity -->
+		<div class="max-w-none my-1 min-h-7 text-textColor">
 			{
 				shouldUseCache && cachedHtml ? (
 					<section class="post-body" data-html-type="cached" set:html={cachedHtml} />

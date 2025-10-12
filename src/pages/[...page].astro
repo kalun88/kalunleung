@@ -8,6 +8,7 @@ import { siteInfo } from "@/siteInfo";
 import { FULL_PREVIEW_COLLECTIONS, HIDE_UNDERSCORE_SLUGS_IN_LISTS, HOME_PAGE_SLUG, RECENT_POSTS_ON_HOME_PAGE, HOMEPAGE_COLLECTIONS, LAST_BUILD_TIME, BUILD_FOLDER_PATHS } from "@/constants";
 import PostPreview from "@/components/blog/PostPreview.astro";
 import PostPreviewMedium from "@/components/blog/PostPreviewMedium.astro";
+import PostPreviewWide from "@/components/blog/PostPreviewWide.astro";
 import Icon from "@/components/Icon.astro";
 import { buildHeadings, slugify } from "@/utils";
 import TOC from "@/components/blog/TOC.astro";
@@ -217,7 +218,7 @@ if (pageFound && page.Slug === HOME_PAGE_SLUG && HOMEPAGE_COLLECTIONS && Object.
 						ogImage: `/og-image/${page.Slug}.png`,
 				}}
 		>
-				<div class="max-w-[1200px] sm:ml-8 print:max-w-full print:ml-0">
+				<div class="max-w-none sm:max-w-[90vw] lg:max-w-[85vw] xl:max-w-[1100px] sm:ml-8 print:ml-0 print:max-w-full">
 						<article class="break-words" data-pagefind-body>
 								{shouldUseCache && cachedHtml ? (
 										<div class="post-body" data-html-type="cached" set:html={cachedHtml}></div>
@@ -232,25 +233,37 @@ if (pageFound && page.Slug === HOME_PAGE_SLUG && HOMEPAGE_COLLECTIONS && Object.
 				{/* New Granular Homepage Collections */}
 				{Object.entries(homepage_collections).map(([collectionName, data]) => (
 					data.posts && data.posts.length > 0 && (
-										<div key={collectionName} class="max-w-[708px] sm:ml-8 print:max-w-full print:ml-0">
+										<div key={collectionName} class="max-w-none sm:max-w-[90vw] lg:max-w-[85vw] xl:max-w-[1000px] sm:ml-8 print:ml-0 print:max-w-full">
 							<a href={`#auto-${collectionName.toLowerCase().replace(/[^a-z0-9]/g, '-')}`} id={`auto-${collectionName.toLowerCase().replace(/[^a-z0-9]/g, '-')}`} class="inline" onclick="var fullUrl = `${window.location.origin}${window.location.pathname}#${id}`; navigator.clipboard.writeText(fullUrl);">
 								<h2 class="mb-4 mt-8 text-2xl font-normal hasId">
 									<strong class="font-semibold">{data.config.title}</strong>
 								</h2>
 							</a>
 							<section aria-label={`${data.config.title} list`}>
-								{data.config['display-style'] === 'medium-cards' ? (
-									// Portfolio/medium card style - no gaps, collapsed borders
-									<>
-										<div class="portfolio-cards grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-											<style>
-												.portfolio-cards > * {
-													margin-right: -1px;
-													margin-bottom: -1px;
-												}
-											</style>
+							{data.config['display-style'] === 'medium-cards' ? (
+								// Portfolio/medium card style - clean grid without borders
+								<>
+									<div class="portfolio-cards grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-none sm:max-w-[90vw] lg:max-w-[85vw] xl:max-w-[1100px]">
 											{data.posts.map((post) => (
 												<PostPreviewMedium key={post.id} post={post} as="h3" showPin={false} />
+											))}
+										</div>
+										<span class="mt-4 block sm:text-end">
+											<a
+												class="sm:hover:text-accent"
+												href={getNavLink(`/collections/${slugify(collectionName)}/`)}
+												data-astro-prefetch
+											>
+												View all {collectionName.toLowerCase()} →
+											</a>
+										</span>
+									</>
+								) : data.config['display-style'] === 'wide' ? (
+									// Wide feed style - horizontal 3-column layout
+									<>
+										<div class="wide-feed-container space-y-0 max-w-none sm:max-w-[90vw] lg:max-w-[85vw] xl:max-w-[1200px]">
+											{data.posts.map((post) => (
+												<PostPreviewWide key={post.id} post={post} as="h3" showPin={false} />
 											))}
 										</div>
 										<span class="mt-4 block sm:text-end">
@@ -292,12 +305,17 @@ if (pageFound && page.Slug === HOME_PAGE_SLUG && HOMEPAGE_COLLECTIONS && Object.
 
 		<button
 				id="to-top-btn"
-				class="cursor-pointer z-30 fixed print:hidden bottom-20 sm:bottom-8 end-4 flex h-10 w-10 translate-y-28 items-center justify-center rounded-full border-2 border-transparent bg-zinc-200 text-3xl opacity-0 transition-all duration-300 hover:border-zinc-400 data-[show=true]:translate-y-0 data-[show=true]:opacity-100 dark:bg-zinc-700 sm:end-8 sm:h-12 sm:w-12"
+				class="cursor-pointer z-30 fixed print:hidden bottom-20 sm:bottom-8 end-4 flex h-10 w-10 translate-y-28 items-center justify-center rounded-full border-2 border-transparent bg-zinc-200 text-3xl opacity-0 motion-safe:transition-all motion-reduce:transition-none duration-300 hover:border-zinc-400 focus-visible:border-zinc-500 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent data-[show=true]:translate-y-0 data-[show=true]:opacity-100 dark:bg-zinc-700 sm:end-8 sm:h-12 sm:w-12 contrast-more:border-4 forced-colors:border-ButtonBorder pointer-coarse:h-12 pointer-coarse:w-12 sm:pointer-coarse:h-14 sm:pointer-coarse:w-14"
 				aria-label="Back to Top"
+				aria-describedby="back-to-top-description"
 				data-show="false"
+				type="button"
 		>
-				<Icon name={"to-top"} class="h-6 w-6" aria-label="Go Back to Top" stroke-linecap="round" />
+				<Icon name={"to-top"} class="h-6 w-6" aria-hidden="true" stroke-linecap="round" />
 		</button>
+		<div id="back-to-top-description" class="sr-only">
+			Scroll back to the top of the page
+		</div>
 
 		<script>
 				document.addEventListener("DOMContentLoaded", function () {

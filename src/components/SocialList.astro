@@ -1,33 +1,38 @@
 ---
-import Icon from "@/components/Icon.astro";
-import { getTextToSVGPath } from "@/lib/style-helpers";
 import { SOCIALS } from "@/constants";
 import type { SocialLink } from "@/types";
 
 const mapSocialLinks = (socialLinksObject: { [key: string]: string }): SocialLink[] => {
 	return Object.entries(socialLinksObject)
+		.filter(([key, value]) => value && value.trim() !== "") // Filter out empty values first
 		.map(([key, value]): SocialLink => {
-			let iconname = getTextToSVGPath(key) ? key : "web";
-			// let iconname = getTextToIconName(key) ? getTextToIconName(key) : "mdi:web";
 			if (key === "email") {
 				return {
-					name: iconname,
+					name: key,
 					friendlyName: key.charAt(0).toUpperCase() + key.slice(1),
 					link: value.startsWith("mailto:") ? value.replace("mailto:", "") : value,
 					isWebmention: true,
 				};
 			}
 
+			// Handle Instagram username format
+			let processedLink = value;
+			if (key === "instagram" && value && !value.startsWith("http")) {
+				processedLink = `https://instagram.com/${value}`;
+			}
+
+
 			return {
-				name: iconname,
+				name: key,
 				friendlyName: key.charAt(0).toUpperCase() + key.slice(1),
-				link: value,
+				link: processedLink,
 			};
-		})
-		.filter((link) => link.link);
+		});
 };
 
 const socialLinks = mapSocialLinks(SOCIALS);
+
+const allSocialLinks = socialLinks;
 ---
 
 <script>
@@ -67,30 +72,77 @@ const socialLinks = mapSocialLinks(SOCIALS);
 {
 	socialLinks && socialLinks.length > 0 && (
 		<>
-			<div class="flex flex-wrap items-center gap-x-4 print:hidden">
-				<p>Find me on</p>
-				<ul class="flex flex-1 items-center gap-x-2 sm:flex-initial">
-					{socialLinks.map(({ link, name, friendlyName, isWebmention }) => (
-						<li class="flex">
+			{/* Regular footer version - hidden on larger screens */}
+			<div class="print:hidden flex items-center gap-2 sm:hidden">
+				<ul class="flex items-center gap-2 flex-wrap">
+					{allSocialLinks.map(({ link, name, friendlyName, isWebmention }) => (
+						<li class="border border-accent/30 rounded-full px-3 py-1 text-sm hover:bg-accent/10 transition-colors">
 							{friendlyName === "Email" ? (
 								<a
-									class="email-link sm:hover:text-link inline-block p-1"
+									class="email-link text-accent hover:text-accent/80 transition-colors"
 									href="#"
 									data-email={link}
 									rel={`noopener noreferrer ${isWebmention ? "me authn" : ""}`}
 								>
-									<Icon class="h-6 w-6" name={name} aria-label={friendlyName} focusable="false" />
-									<span class="sr-only">{friendlyName}</span>
+									<span class="whitespace-nowrap">▰ email</span>
+								</a>
+							) : friendlyName === "Newsletter" ? (
+								<a
+									class="text-accent hover:text-accent/80 transition-colors"
+									href={link}
+									target="_blank"
+									rel="noopener noreferrer"
+									onclick="window.open(this.href, 'newsletter', 'width=600,height=1100,scrollbars=yes,resizable=yes'); return false;"
+								>
+									<span class="whitespace-nowrap">☗ newsletter</span>
 								</a>
 							) : (
 								<a
-									class="sm:hover:text-link inline-block p-1"
+									class="text-accent hover:text-accent/80 transition-colors"
 									href={link}
 									target="_blank"
 									rel={`noopener noreferrer ${isWebmention ? "me authn" : ""}`}
 								>
-									<Icon class="h-6 w-6" name={name} aria-label={friendlyName} focusable="false" />
-									<span class="sr-only">{friendlyName}</span>
+									<span class="whitespace-nowrap">◗ instagram</span>
+								</a>
+							)}
+						</li>
+					))}
+				</ul>
+			</div>
+
+			{/* Fixed floating version - only on larger screens */}
+			<div class="hidden sm:block print:hidden fixed bottom-4 right-4 z-50 bg-white/90 backdrop-blur-sm border border-accent/20 p-3">
+				<ul class="flex items-center gap-2 flex-wrap">
+					{allSocialLinks.map(({ link, name, friendlyName, isWebmention }) => (
+						<li class="border border-accent/30 rounded-full px-3 py-1 text-sm hover:bg-accent/10 transition-colors">
+							{friendlyName === "Email" ? (
+								<a
+									class="email-link text-accent hover:text-accent/80 transition-colors"
+									href="#"
+									data-email={link}
+									rel={`noopener noreferrer ${isWebmention ? "me authn" : ""}`}
+								>
+									<span class="whitespace-nowrap">▰ email</span>
+								</a>
+							) : friendlyName === "Newsletter" ? (
+								<a
+									class="text-accent hover:text-accent/80 transition-colors"
+									href={link}
+									target="_blank"
+									rel="noopener noreferrer"
+									onclick="window.open(this.href, 'newsletter', 'width=600,height=1100,scrollbars=yes,resizable=yes'); return false;"
+								>
+									<span class="whitespace-nowrap">☗ newsletter</span>
+								</a>
+							) : (
+								<a
+									class="text-accent hover:text-accent/80 transition-colors"
+									href={link}
+									target="_blank"
+									rel={`noopener noreferrer ${isWebmention ? "me authn" : ""}`}
+								>
+									<span class="whitespace-nowrap">◗ instagram</span>
 								</a>
 							)}
 						</li>
@@ -99,9 +151,9 @@ const socialLinks = mapSocialLinks(SOCIALS);
 			</div>
 			<div
 				id="toast"
-				class="fixed bottom-8 left-1/2 -translate-x-1/2 transform rounded-sm bg-gray-800 px-4 py-2 text-center text-white opacity-0 transition-opacity duration-300"
+				class="fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded opacity-0 transition-opacity duration-300"
 			>
-				Email copied to clipboard
+				Email copied to clipboard!
 			</div>
 			<div class="hidden print:block print:w-full">
 				<hr class="mb-4" />

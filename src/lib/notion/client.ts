@@ -183,14 +183,6 @@ export async function getAllEntries(): Promise<Post[]> {
 					},
 				},
 				{
-					property: "Publish Date",
-					formula: {
-						date: {
-							on_or_before: new Date().toISOString(),
-						},
-					},
-				},
-				{
 					property: "Slug",
 					formula: {
 						string: {

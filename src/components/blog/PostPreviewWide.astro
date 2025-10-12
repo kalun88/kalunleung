@@ -1,0 +1,139 @@
+---
+import type { HTMLTag } from "astro/types";
+import FormattedDate from "@/components/FormattedDate.astro";
+import type { Post } from "@/lib/interfaces";
+import { getNotionColorToTailwindColor } from "@/lib/style-helpers";
+import { getNavLink, getPostLink, filePath } from "@/lib/blog-helpers";
+import { MENU_PAGES_COLLECTION } from "@/constants";
+import { getPostContentByPostId } from "@/lib/notion/client";
+import Icon from "@/components/Icon.astro";
+import { slugify } from "@/utils";
+
+interface Props {
+	post: Post;
+	as?: HTMLTag;
+	showPin?: boolean;
+}
+
+const { post, as: Tag = "div", showPin = true } = Astro.props;
+const postLink = getPostLink(post.Slug, post.Collection === MENU_PAGES_COLLECTION);
+
+// Get images from content
+const { blocks } = await getPostContentByPostId(post);
+
+// Extract all images from the content
+const imageBlocks = blocks.filter(block => block.Type === "image" && block.NImage);
+let imageUrls: string[] = [];
+
+for (const imageBlock of imageBlocks) {
+	if (imageBlock.NImage) {
+		const imageData = imageBlock.NImage;
+
+		if (imageData.File && imageData.File.Url) {
+			try {
+				const imageUrl = imageData.File.OptimizedUrl || imageData.File.Url;
+				imageUrls.push(filePath(new URL(imageUrl)));
+			} catch (err) {
+				console.log(`Image URL error for ${post.Title}:`, err);
+			}
+		} else if (imageData.External && imageData.External.Url) {
+			imageUrls.push(imageData.External.Url);
+		}
+	}
+}
+
+// Randomly select 1 or 2 images
+const numImages = imageUrls.length > 1 ? (Math.random() > 0.5 ? 2 : 1) : Math.min(1, imageUrls.length);
+const selectedImages = imageUrls.sort(() => Math.random() - 0.5).slice(0, numImages);
+---
+
+<!-- Wide feed layout: 3-column horizontal card -->
+<article class="group relative border-b border-gray-200 dark:border-gray-700 pb-6 mb-6 last:border-b-0 last:pb-0 last:mb-0">
+	<!-- Main clickable overlay -->
+	<a
+		href={postLink}
+		class="absolute inset-0 z-10 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+		data-astro-prefetch
+		aria-label={`Read: ${post.Title}`}
+	></a>
+
+	<div class="grid grid-cols-1 md:grid-cols-[200px_1fr_auto] gap-6 items-start">
+		<!-- Column 1: Tags (top) + Date (bottom) -->
+		<div class="flex flex-col justify-between min-h-[120px] font-mono">
+			<!-- Tags at top -->
+			<div class="space-y-1">
+				{post.Tags && post.Tags.length > 0 ? (
+					post.Tags.slice(0, 3).map((tag) => (
+						<a
+							class="block text-xs hover:opacity-80 transition-opacity relative z-20"
+							style="pointer-events: auto;"
+							aria-label={`View more blogs with the tag ${tag.name}`}
+							href={getNavLink("/tags/" + slugify(tag.name) + "/")}
+						>
+							[{tag.name}]
+						</a>
+					))
+				) : (
+					<div class="text-xs text-gray-400">[]</div>
+				)}
+			</div>
+
+			<!-- Date at bottom -->
+			<div class="mt-auto">
+				<FormattedDate
+					date={new Date(post.Date + 'T00:00:00')}
+					class="text-xs text-gray-600 dark:text-gray-400"
+				/>
+			</div>
+		</div>
+
+		<!-- Column 2: Title + Excerpt -->
+		<div class="flex flex-col justify-center space-y-2">
+			<div class="flex items-start gap-2">
+				{showPin && post.Pinned && (
+					<Icon
+						class="h-4 w-4 text-accent flex-shrink-0 mt-1"
+						name={"pin"}
+						aria-label="Pinned Post"
+						focusable="false"
+					/>
+				)}
+				<Tag class="text-xl font-semibold text-gray-900 dark:text-white leading-tight group-hover:text-accent transition-colors">
+					{post.Title}
+				</Tag>
+			</div>
+
+			{post.Excerpt && (
+				<p class="text-sm text-gray-600 dark:text-gray-300 leading-relaxed line-clamp-3">
+					{post.Excerpt}
+				</p>
+			)}
+		</div>
+
+		<!-- Column 3: Images (1-2 random images) -->
+		<div class="flex gap-3 items-center justify-end min-w-[200px]">
+			{selectedImages.length > 0 ? (
+				selectedImages.map((imageUrl) => (
+					<div class="relative overflow-hidden rounded-md shadow-sm group-hover:shadow-md transition-shadow">
+						<img
+							src={imageUrl}
+							alt={`Image from ${post.Title}`}
+							class="object-cover transition-transform duration-300 group-hover:scale-105"
+							style={`width: ${selectedImages.length === 2 ? '120px' : '180px'}; height: ${Math.floor(Math.random() * 40) + 100}px;`}
+							loading="lazy"
+							decoding="async"
+						/>
+					</div>
+				))
+			) : (
+				<div class="flex h-28 w-36 items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-md">
+					<Icon
+						class="h-12 w-12 text-gray-300 dark:text-gray-600"
+						name="image"
+						aria-hidden="true"
+					/>
+				</div>
+			)}
+		</div>
+	</div>
+</article>

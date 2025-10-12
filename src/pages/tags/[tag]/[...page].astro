@@ -134,7 +134,7 @@ const paginationProps = {
 	{description && <q class="-mt-3 mb-6 block italic">{description}</q>}
 
 	<section aria-label="Blog post list">
-		<div class="full-content-feed space-y-0">
+		<div class="full-content-feed space-y-0 max-w-none sm:max-w-[90vw] lg:max-w-[85vw] xl:max-w-[1000px]">
 			{
 				resetFirstImage() && postsWithCacheInfo.map(({ post, shouldUseCache, postLastUpdatedBeforeLastBuild }, index) => {
 					resetCurrentHeadings();

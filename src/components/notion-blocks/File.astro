@@ -28,13 +28,14 @@ const filename = decodeURIComponent(url.pathname.split("/").slice(-1)[0]);
 					? block.File.Caption[0].Text.Content
 					: filename}
 				{"  "}
-				<span class="border-accent-2/20 hover:border-accent/40 inline-flex max-w-full rounded-lg border p-1">
+				<span class="border-accent-2/20 hover:border-accent/40 focus-within:border-accent/40 inline-flex max-w-full rounded-lg border p-1 forced-colors:border-ButtonBorder forced-colors:bg-ButtonFace">
 					<a
 						href={block.File.External ? url.String() : filePath(url)}
 						target="_blank"
 						rel="noopener noreferrer"
+						class="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent forced-colors:text-LinkText"
 					>
-						<span class="site-page-link text-link inline-flex max-w-full items-center justify-center rounded-lg text-sm">
+						<span class="site-page-link text-link inline-flex max-w-full items-center justify-center rounded-lg text-sm forced-colors:text-ButtonText">
 							Download{" "}
 							<Icon name={"download"} class="inline h-4 w-4 align-sub" aria-hidden="true" />
 						</span>

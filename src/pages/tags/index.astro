@@ -17,32 +17,27 @@ const meta = {
 
 <PageLayout meta={meta}>
   <h1 class="title text-accent-2 mb-6">Tags</h1>
-  <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+  <div class="flex flex-col gap-2 font-mono text-sm max-w-2xl">
     {
       allTags.map((tag) => (
-        <div class="flex items-center">
+        <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-2">
           <a
-            class="inline-block"
+            class="inline-flex items-center transition-opacity hover:opacity-80"
             href={getNavLink("/tags/" + slugify(tag.name) + "/")}
             title={`View posts with the tag: ${tag.name}`}
             aria-label={`View posts with the tag: ${tag.name}`}
             data-astro-prefetch
           >
-            <span
-              class={`rounded-lg px-2 py-1 ${getNotionColorToTailwindColor(
-                tag.color + "-background",
-                true,
-              )} `}
-            >
-              {tag.name}
-              <span class="ml-2 rounded-sm bg-gray-100 px-2 py-0.5 text-rose-800 dark:bg-gray-800 dark:text-rose-300">
-                {tag.count}
-              </span>
-            </span>
+            [{tag.name}]
           </a>
-          {tag.description && (
-            <TagDescPopover description={tag.description} />
-          )}
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-gray-500">
+              {tag.count}
+            </span>
+            {tag.description && (
+              <TagDescPopover description={tag.description} />
+            )}
+          </div>
         </div>
       ))
     }

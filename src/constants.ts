@@ -70,6 +70,9 @@ export const MEDIUM_PREVIEW_COLLECTIONS = key_value_from_json["medium-preview-co
 // manual-edit: Added news feed collections configuration
 export const NEWS_FEED_COLLECTIONS = key_value_from_json["news-feed-collections"] || [];
 
+// manual-edit: Added wide preview collections configuration
+export const WIDE_PREVIEW_COLLECTIONS = key_value_from_json["wide-preview-collections"] || [];
+
 // manual-edit: Added navigation order configuration
 export const NAV_ORDER = key_value_from_json["nav-order"] || [];
 

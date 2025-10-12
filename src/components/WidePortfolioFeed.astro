@@ -1,0 +1,90 @@
+---
+// WidePortfolioFeed.astro
+// New wide, stacked 3-column portfolio feed view
+// Usage: For collections listed in wide-preview-collections in constants-config.json
+---
+
+import type { PortfolioItem } from '../types';
+
+const monoFont = 'Roboto Mono, monospace';
+
+export interface Props {
+  items: PortfolioItem[];
+}
+
+const getImages = (item: PortfolioItem) => {
+  // Prefer 2 images, fallback to 1, allow random sizing
+  if (!item.images || item.images.length === 0) return [];
+  if (item.images.length === 1) return [item.images[0]];
+  // Shuffle and pick 2
+  return item.images.sort(() => Math.random() - 0.5).slice(0, 2);
+};
+
+---
+<div class="wide-feed">
+  {items.map(item => (
+    <div class="wide-card">
+      <div class="wide-col wide-col-1">
+          <div class="wide-tag" style="font-family: Roboto Mono, monospace;">
+            {item.tags.map(tag => `[${tag}]`).join(' ')}
+          </div>
+          <div class="wide-date" style="font-family: Roboto Mono, monospace;">
+            {item.date}
+          </div>
+      </div>
+      <div class="wide-col wide-col-2">
+        <div class="wide-excerpt">{item.excerpt}</div>
+      </div>
+      <div class="wide-col wide-col-3">
+        <div class="wide-images">
+          {getImages(item).map(img => (
+            <img src={img} class="wide-img" />
+          ))}
+        </div>
+      </div>
+    </div>
+  ))}
+</div>
+
+<style>
+.wide-feed {
+
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+  margin-top: auto;
+}
+.wide-col-2 {
+  display: flex;
+  align-items: center;
+  font-size: 1.15rem;
+  color: var(--color-text, #222);
+}
+.wide-excerpt {
+  padding: 0 1rem;
+}
+.wide-col-3 {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+.wide-images {
+  display: flex;
+  gap: 1rem;
+}
+.wide-img {
+  max-width: 180px;
+  max-height: 140px;
+  object-fit: cover;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+}
+@media (max-width: 900px) {
+  .wide-card {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+  .wide-col-3 {
+    justify-content: flex-start;
+  }
+}
+</style>

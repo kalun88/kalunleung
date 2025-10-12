@@ -39,7 +39,7 @@ export async function getCollectionsWDesc() {
 }
 
 export async function getMenu(): Promise<
-	{ title: string; path: string; children?: { title: string; path: string }[] }[]
+	{ title: string; path: string; isExternal?: boolean; children?: { title: string; path: string }[] }[]
 > {
 	// If nav-order is configured, use it for complete control
 	if (NAV_ORDER && NAV_ORDER.length > 0) {
@@ -66,6 +66,13 @@ export async function getMenu(): Promise<
 						path: getNavLink("/collections/" + slugify(item.name)),
 					});
 				}
+			} else if (item.type === 'external' && item.url) {
+				// External link
+				menuItems.push({
+					title: item.title,
+					path: item.url,
+					isExternal: true,
+				});
 			}
 		}
 		

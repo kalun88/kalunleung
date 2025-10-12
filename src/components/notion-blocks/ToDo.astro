@@ -18,7 +18,7 @@ const { block, renderChildren = true, setId = true } = Astro.props;
 	{
 		block.ListItems.filter((b: interfaces.Block) => b.Type === "to_do").map(
 			(b: interfaces.Block, index) => (
-				<div class="gap-2" id={setId ? b.Id : undefined}>
+				<div class="gap-2" id={setId ? b.Id : undefined} role="listitem">
 					<div
 						class:list={[
 							"flex max-w-full items-start",
@@ -28,20 +28,22 @@ const { block, renderChildren = true, setId = true } = Astro.props;
 									!["default", "default_background", "default-background"].includes(b.ToDo.Color),
 							},
 						]}
+						aria-checked={b.ToDo.Checked}
+						aria-describedby={`todo-text-${b.Id}`}
 					>
 						{/* Flex container for the checkbox and text */}
-						<div class="mt-1 pr-2">
+						<div class="mt-1 pr-2" role="presentation">
 							{/* Padding for the checkbox */}
 
 							<Icon
-								class="text-textColor/50 h-5 w-5"
+								class="text-textColor/50 h-5 w-5 contrast-more:text-textColor forced-colors:text-ButtonText"
 								name={b.ToDo.Checked ? "checkbox-checked" : "checkbox-unchecked"}
-								aria-label={b.ToDo.Checked ? "checkbox-checked" : "checkbox-unchecked"}
+								aria-hidden="true"
 								focusable="false"
 							/>
 							<span class="rss-only hidden">{b.ToDo.Checked ? "✅" : "⬜"}</span>
 						</div>
-						<div class="min-w-0 flex-1">
+						<div class="min-w-0 flex-1" id={`todo-text-${b.Id}`}>
 							{/* Container for text, taking up the rest of the space */}
 							{b.ToDo.RichTexts.map((richText: interfaces.RichText) => {
 								if (b.ToDo.Checked) {
