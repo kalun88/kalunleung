@@ -24,28 +24,10 @@ const postDate = post.Date ? new Date(post.Date + 'T00:00:00') : null;
 // Use the same link generation as PostPreviewMedium
 const postLink = getPostLink(post.Slug, post.Collection === MENU_PAGES_COLLECTION);
 
-// Use Cover image from post object (already fetched, no extra API call needed)
-// For 'file' type covers: in dev mode use direct Notion URL, in build use processed local images
-// For 'external' type covers: always use direct URL (external links don't expire)
-let coverImageUrl = "";
-if (post.Cover && post.Cover.Url) {
-	if (post.Cover.Type === 'file') {
-		// In dev mode, use direct Notion URL since images aren't processed yet
-		// In production build, use filePath() to serve optimized local images
-		if (import.meta.env.DEV) {
-			coverImageUrl = post.Cover.Url; // Direct Notion URL for dev
-		} else {
-			try {
-				coverImageUrl = filePath(new URL(post.Cover.Url));
-			} catch (err) {
-				console.log(`Cover image URL error for ${post.Title}:`, err);
-				coverImageUrl = post.Cover.Url; // Fallback to direct URL
-			}
-		}
-	} else {
-		coverImageUrl = post.Cover.Url; // External URL - use directly
-	}
-}
+// Use FeaturedImages array (for consistency, though not displayed in this layout)
+const images = post.FeaturedImages && post.FeaturedImages.length > 0
+	? post.FeaturedImages.map(img => img.Url)
+	: [];
 
 const borderClasses = enableBorder && !isLast ? "border-b border-slate-200 pb-2 mb-2" : "";
 ---

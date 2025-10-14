@@ -17,27 +17,11 @@ interface Props {
 const { post, as: Tag = "div", showPin = true } = Astro.props;
 const postLink = getPostLink(post.Slug, post.Collection === MENU_PAGES_COLLECTION);
 
-// Use Cover image from post object (already fetched, no extra API call needed)
-// For 'file' type covers: in dev mode use direct Notion URL, in build use processed local images
-// For 'external' type covers: always use direct URL (external links don't expire)
+// Use FeaturedImages array - show up to 2 images side by side
 let selectedImages: string[] = [];
-if (post.Cover && post.Cover.Url) {
-	if (post.Cover.Type === 'file') {
-		// In dev mode, use direct Notion URL since images aren't processed yet
-		// In production build, use filePath() to serve optimized local images
-		if (import.meta.env.DEV) {
-			selectedImages = [post.Cover.Url]; // Direct Notion URL for dev
-		} else {
-			try {
-				selectedImages = [filePath(new URL(post.Cover.Url))];
-			} catch (err) {
-				console.log(`Cover image URL error for ${post.Title}:`, err);
-				selectedImages = [post.Cover.Url]; // Fallback to direct URL
-			}
-		}
-	} else {
-		selectedImages = [post.Cover.Url]; // External URL - use directly
-	}
+if (post.FeaturedImages && post.FeaturedImages.length > 0) {
+	// Take first 2 images if available
+	selectedImages = post.FeaturedImages.slice(0, 2).map(img => img.Url);
 }
 ---
 
@@ -104,19 +88,21 @@ if (post.Cover && post.Cover.Url) {
 			)}
 		</div>
 
-		<!-- Column 3: Cover image -->
+		<!-- Column 3: Cover image(s) - side by side if 2 images -->
 		<div class="flex gap-3 items-center justify-end min-w-[200px]">
 			{selectedImages.length > 0 ? (
-				<div class="relative overflow-hidden shadow-sm group-hover:shadow-md transition-shadow">
-					<img
-						src={selectedImages[0]}
-						alt={`Cover image for ${post.Title}`}
-						class="object-cover transition-transform duration-300 group-hover:scale-105"
-						style="width: 180px; height: 120px;"
-						loading="lazy"
-						decoding="async"
-					/>
-				</div>
+				selectedImages.map((imgUrl, index) => (
+					<div class="relative overflow-hidden shadow-sm group-hover:shadow-md transition-shadow">
+						<img
+							src={imgUrl}
+							alt={`Image ${index + 1} for ${post.Title}`}
+							class="object-cover transition-transform duration-300 group-hover:scale-105"
+							style={selectedImages.length === 1 ? "width: 180px; height: 120px;" : "width: 90px; height: 90px;"}
+							loading="lazy"
+							decoding="async"
+						/>
+					</div>
+				))
 			) : (
 				<div class="flex h-28 w-36 items-center justify-center bg-gray-100 dark:bg-gray-800">
 					<Icon

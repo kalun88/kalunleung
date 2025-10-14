@@ -21,6 +21,7 @@ export interface Post {
 	Tags: SelectProperty[];
 	Excerpt: string;
 	FeaturedImage: FileObject | null;
+	FeaturedImages: FileObject[]; // Array of all featured images for multi-image layouts
 	Rank: number;
 	LastUpdatedDate: string;
 	LastUpdatedTimeStamp: Date;
