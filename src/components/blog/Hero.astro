@@ -23,23 +23,10 @@ const dateTimeOptions: Intl.DateTimeFormatOptions = {
 <h1 class="title mb-3 sm:mb-1" data-pagefind-filter=`collections:${post.Collection}`>
 	{post.Title}
 </h1>
-{post.Excerpt && <div class="mb-2 block italic">{post.Excerpt}</div>}
 <div class="flex max-w-full flex-wrap items-center gap-x-3 gap-y-2">
 	<p class="font-semibold">
 		<FormattedDate date={new Date(post.Date + 'T00:00:00')} dateTimeOptions={dateTimeOptions} />
 	</p>
-	{
-		post.Date && post.LastUpdatedDate && areDifferentDates(post.Date, post.LastUpdatedDate) && (
-			<span class="bg-quote/10 text-quote rounded-lg p-1">
-				{"Last Updated:"}
-				<FormattedDate
-					class="ms-1"
-					date={new Date(post.LastUpdatedDate)}
-					dateTimeOptions={dateTimeOptions}
-				/>
-			</span>
-		)
-	}
 </div>
 {
 	post.Tags && post.Tags.length > 0 && (
