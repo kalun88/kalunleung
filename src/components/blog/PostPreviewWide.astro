@@ -5,7 +5,6 @@ import type { Post } from "@/lib/interfaces";
 import { getNotionColorToTailwindColor } from "@/lib/style-helpers";
 import { getNavLink, getPostLink, filePath } from "@/lib/blog-helpers";
 import { MENU_PAGES_COLLECTION } from "@/constants";
-import { getPostContentByPostId } from "@/lib/notion/client";
 import Icon from "@/components/Icon.astro";
 import { slugify } from "@/utils";
 
@@ -18,33 +17,28 @@ interface Props {
 const { post, as: Tag = "div", showPin = true } = Astro.props;
 const postLink = getPostLink(post.Slug, post.Collection === MENU_PAGES_COLLECTION);
 
-// Get images from content
-const { blocks } = await getPostContentByPostId(post);
-
-// Extract all images from the content
-const imageBlocks = blocks.filter(block => block.Type === "image" && block.NImage);
-let imageUrls: string[] = [];
-
-for (const imageBlock of imageBlocks) {
-	if (imageBlock.NImage) {
-		const imageData = imageBlock.NImage;
-
-		if (imageData.File && imageData.File.Url) {
+// Use Cover image from post object (already fetched, no extra API call needed)
+// For 'file' type covers: in dev mode use direct Notion URL, in build use processed local images
+// For 'external' type covers: always use direct URL (external links don't expire)
+let selectedImages: string[] = [];
+if (post.Cover && post.Cover.Url) {
+	if (post.Cover.Type === 'file') {
+		// In dev mode, use direct Notion URL since images aren't processed yet
+		// In production build, use filePath() to serve optimized local images
+		if (import.meta.env.DEV) {
+			selectedImages = [post.Cover.Url]; // Direct Notion URL for dev
+		} else {
 			try {
-				const imageUrl = imageData.File.OptimizedUrl || imageData.File.Url;
-				imageUrls.push(filePath(new URL(imageUrl)));
+				selectedImages = [filePath(new URL(post.Cover.Url))];
 			} catch (err) {
-				console.log(`Image URL error for ${post.Title}:`, err);
+				console.log(`Cover image URL error for ${post.Title}:`, err);
+				selectedImages = [post.Cover.Url]; // Fallback to direct URL
 			}
-		} else if (imageData.External && imageData.External.Url) {
-			imageUrls.push(imageData.External.Url);
 		}
+	} else {
+		selectedImages = [post.Cover.Url]; // External URL - use directly
 	}
 }
-
-// Randomly select 1 or 2 images
-const numImages = imageUrls.length > 1 ? (Math.random() > 0.5 ? 2 : 1) : Math.min(1, imageUrls.length);
-const selectedImages = imageUrls.sort(() => Math.random() - 0.5).slice(0, numImages);
 ---
 
 <!-- Wide feed layout: 3-column horizontal card -->
@@ -110,23 +104,21 @@ const selectedImages = imageUrls.sort(() => Math.random() - 0.5).slice(0, numIma
 			)}
 		</div>
 
-		<!-- Column 3: Images (1-2 random images) -->
+		<!-- Column 3: Cover image -->
 		<div class="flex gap-3 items-center justify-end min-w-[200px]">
 			{selectedImages.length > 0 ? (
-				selectedImages.map((imageUrl) => (
-					<div class="relative overflow-hidden rounded-md shadow-sm group-hover:shadow-md transition-shadow">
-						<img
-							src={imageUrl}
-							alt={`Image from ${post.Title}`}
-							class="object-cover transition-transform duration-300 group-hover:scale-105"
-							style={`width: ${selectedImages.length === 2 ? '120px' : '180px'}; height: ${Math.floor(Math.random() * 40) + 100}px;`}
-							loading="lazy"
-							decoding="async"
-						/>
-					</div>
-				))
+				<div class="relative overflow-hidden shadow-sm group-hover:shadow-md transition-shadow">
+					<img
+						src={selectedImages[0]}
+						alt={`Cover image for ${post.Title}`}
+						class="object-cover transition-transform duration-300 group-hover:scale-105"
+						style="width: 180px; height: 120px;"
+						loading="lazy"
+						decoding="async"
+					/>
+				</div>
 			) : (
-				<div class="flex h-28 w-36 items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-md">
+				<div class="flex h-28 w-36 items-center justify-center bg-gray-100 dark:bg-gray-800">
 					<Icon
 						class="h-12 w-12 text-gray-300 dark:text-gray-600"
 						name="image"

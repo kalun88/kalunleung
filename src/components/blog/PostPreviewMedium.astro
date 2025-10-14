@@ -5,8 +5,6 @@ import type { Post } from "@/lib/interfaces";
 import { getNotionColorToTailwindColor } from "@/lib/style-helpers";
 import { getNavLink, getPostLink, filePath } from "@/lib/blog-helpers";
 import { MENU_PAGES_COLLECTION } from "@/constants";
-import { getPostContentByPostId } from "@/lib/notion/client";
-import { extractTargetBlocks } from "@/lib/blog-helpers";
 import Icon from "@/components/Icon.astro";
 import { slugify } from "@/utils";
 
@@ -19,33 +17,26 @@ interface Props {
 const { post, as: Tag = "div", showPin = true } = Astro.props;
 const postLink = getPostLink(post.Slug, post.Collection === MENU_PAGES_COLLECTION);
 
-// manual-edit: Get first image from content, use excerpt for text
-const { blocks } = await getPostContentByPostId(post);
-
-// Look for the first image in the content
-let firstImageUrl = "";
-const imageBlock = blocks.find(block => block.Type === "image" && block.NImage);
-
-if (imageBlock && imageBlock.NImage) {
-	const imageData = imageBlock.NImage;
-	
-	if (imageData.File && imageData.File.Url) {
-		try {
-			// Use OptimizedUrl if available, otherwise Url
-			const imageUrl = imageData.File.OptimizedUrl || imageData.File.Url;
-			firstImageUrl = filePath(new URL(imageUrl));
-		} catch (err) {
-			console.log(`Image URL error for ${post.Title}:`, err);
-			console.log("Image data:", imageData);
+// Use Cover image from post object (already fetched, no extra API call needed)
+// For 'file' type covers: in dev mode use direct Notion URL, in build use processed local images
+// For 'external' type covers: always use direct URL (external links don't expire)
+let coverImageUrl = "";
+if (post.Cover && post.Cover.Url) {
+	if (post.Cover.Type === 'file') {
+		// In dev mode (import.meta.env.DEV), use direct Notion URL since images aren't processed yet
+		// In production build, use filePath() to serve optimized local images
+		if (import.meta.env.DEV) {
+			coverImageUrl = post.Cover.Url; // Direct Notion URL for dev
+		} else {
+			try {
+				coverImageUrl = filePath(new URL(post.Cover.Url));
+			} catch (err) {
+				console.log(`Cover image URL error for ${post.Title}:`, err);
+				coverImageUrl = post.Cover.Url; // Fallback to direct URL
+			}
 		}
-	} else if (imageData.External && imageData.External.Url) {
-		firstImageUrl = imageData.External.Url;
-	}
-} else {
-	// Debug: log when no image is found
-	console.log(`No image found for "${post.Title}" (slug: ${post.Slug}), blocks count: ${blocks.length}`);
-	if (blocks.length > 0) {
-		console.log("Block types:", blocks.map(b => b.Type));
+	} else {
+		coverImageUrl = post.Cover.Url; // External URL - use directly
 	}
 }
 ---
@@ -55,13 +46,13 @@ if (imageBlock && imageBlock.NImage) {
 	<!-- Main clickable overlay covering entire card -->
 	<a href={postLink} class="absolute inset-0 z-10 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 rounded-lg" data-astro-prefetch aria-label={`Read article: ${post.Title}`}></a>
 	
-	{/* Featured image section with white border/padding */}
-	<div class="p-4 bg-white">
+	{/* Featured image section */}
+	<div class="mb-4">
 		<div class="aspect-[4/3] overflow-hidden bg-gray-100">
-			{firstImageUrl ? (
-				<img 
-					src={firstImageUrl} 
-					alt={`Featured image for ${post.Title}`}
+			{coverImageUrl ? (
+				<img
+					src={coverImageUrl}
+					alt={`Cover image for ${post.Title}`}
 					class="portfolio-image h-full w-full object-cover"
 					style="opacity: 0; transition: opacity 0.3s ease, transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94); transform: scale(1);"
 					loading="eager"
@@ -71,7 +62,7 @@ if (imageBlock && imageBlock.NImage) {
 				/>
 			) : null}
 			<!-- Always include fallback div, shown when image fails -->
-			<div class="flex h-full w-full items-center justify-center bg-gray-100" style={firstImageUrl ? "display: none;" : ""}>
+			<div class="flex h-full w-full items-center justify-center bg-gray-100" style={coverImageUrl ? "display: none;" : ""}>
 				<Icon
 					class="h-16 w-16 text-gray-300"
 					name="image"
@@ -81,8 +72,8 @@ if (imageBlock && imageBlock.NImage) {
 		</div>
 	</div>
 	
-	<!-- Content section with white border/padding and flex-grow to fill remaining space -->
-	<div class="px-4 pb-4 bg-white flex-grow flex flex-col">
+	<!-- Content section with flex-grow to fill remaining space -->
+	<div class="flex-grow flex flex-col">
 		<!-- Line 1: Date and Tag (right-justified) -->
 		<div class="mb-2 flex items-center justify-between">
 			<FormattedDate date={new Date(post.Date + 'T00:00:00')} class="text-sm text-gray-500 font-normal" />

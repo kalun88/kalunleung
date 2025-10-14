@@ -786,6 +786,55 @@ export async function processFileBlocks(fileAttachedBlocks: Block[]) {
 	);
 }
 
+export async function processCoverImages(posts: Post[]) {
+	await Promise.all(
+		posts.map(async (post) => {
+			if (!post.Cover || !post.Cover.Url) {
+				return null;
+			}
+
+			// Only process 'file' type covers (uploaded images that expire)
+			// 'external' type covers are external URLs and don't need processing
+			if (post.Cover.Type !== 'file') {
+				return null;
+			}
+
+			let url = new URL(post.Cover.Url);
+			const cacheFilePath = generateFilePath(url, isConvImageType(url.pathname) && OPTIMIZE_IMAGES);
+
+			const shouldDownload = LAST_BUILD_TIME
+				? post.LastUpdatedTimeStamp > LAST_BUILD_TIME || !fs.existsSync(cacheFilePath)
+				: true;
+
+			if (shouldDownload) {
+				// Check if URL is expired (Notion file URLs expire after ~1 hour)
+				// For covers, we need to refetch the page to get a fresh URL
+				const urlParams = new URLSearchParams(url.search);
+				const expiryParam = urlParams.get('X-Amz-Expires');
+				const dateParam = urlParams.get('X-Amz-Date');
+
+				if (expiryParam && dateParam) {
+					const expirySeconds = parseInt(expiryParam);
+					const dateMs = new Date(dateParam.replace(/(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z/, '$1-$2-$3T$4:$5:$6Z')).getTime();
+					const expiryTime = dateMs + (expirySeconds * 1000);
+
+					if (expiryTime < Date.now()) {
+						// URL expired, need to refetch the post to get new URL
+						const updatedPost = await getPostByPageId(post.PageId);
+						if (updatedPost && updatedPost.Cover && updatedPost.Cover.Url) {
+							url = new URL(updatedPost.Cover.Url);
+						}
+					}
+				}
+
+				return downloadFile(url); // Download and optimize the cover image
+			}
+
+			return null;
+		}),
+	);
+}
+
 export async function getDataSource(): Promise<Database> {
 	if (dsCache !== null) {
 		return Promise.resolve(dsCache);
@@ -1331,7 +1380,7 @@ function _buildPost(pageObject: responses.PageObject): Post {
 	if (pageObject.cover) {
 		cover = {
 			Type: pageObject.cover.type,
-			Url: pageObject.cover.external?.url || "",
+			Url: pageObject.cover.external?.url || pageObject.cover.file?.url || "",
 		};
 	}
 

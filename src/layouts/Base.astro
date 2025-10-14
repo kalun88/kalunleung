@@ -1,5 +1,6 @@
 ---
 import type { SiteMeta } from "@/types";
+import { ViewTransitions } from "astro:transitions";
 import BaseHead from "@/components/BaseHead.astro";
 import Header from "@/components/layout/Header.astro";
 import Footer from "@/components/layout/Footer.astro";
@@ -8,16 +9,19 @@ import { siteInfo } from "@/siteInfo";
 import { ENABLE_LIGHTBOX, REFERENCES } from "@/constants";
 interface Props {
 meta: SiteMeta;
+bodyClass?: string;
 }
 const {
 meta: { title = siteInfo.title, description = siteInfo.description, ogImage, articleDate },
+bodyClass = '',
 } = Astro.props;
 ---
 <html lang={siteInfo.lang}>
    <head>
       <BaseHead title={title} description={description} ogImage={ogImage} articleDate={articleDate} />
+      <ViewTransitions />
    </head>
-   <body class="print:max-w-full">
+   <body class={`print:max-w-full ${bodyClass}`}>
       <SkipLink />
       <Header />
       <main id="main" class="lg:w-[125%]">

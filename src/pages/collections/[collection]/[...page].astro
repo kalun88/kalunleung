@@ -7,7 +7,7 @@ import PostPreviewMedium from "@/components/blog/PostPreviewMedium.astro";
 import PostPreviewNewsFeed from "@/components/blog/PostPreviewNewsFeed.astro";
 import PostPreviewWide from "@/components/blog/PostPreviewWide.astro";
 import Pagination from "@/components/Paginator.astro";
-import { getAllPosts, getUniqueTags, getAllTagsWithCounts } from "@/lib/notion/client";
+import { getAllPosts, getUniqueTags, getAllTagsWithCounts, processCoverImages } from "@/lib/notion/client";
 import type { Post, SelectProperty } from "@/lib/interfaces";
 import { getCollectionsWDesc, slugify } from "@/utils";
 import { getNotionColorToTailwindColor } from "@/lib/style-helpers";
@@ -20,6 +20,9 @@ export const getStaticPaths = (async ({ paginate }) => {
 		if (HIDE_UNDERSCORE_SLUGS_IN_LISTS) {
 				posts = posts.filter((post) => !post.Slug.startsWith("_"));
 		}
+
+		// Process cover images for all posts (downloads and optimizes them)
+		await processCoverImages(posts);
 
 		const collections = await getCollectionsWDesc();
 
@@ -150,7 +153,7 @@ const paginationProps = {
 									}
 								</div>
 							) : FULL_PREVIEW_COLLECTIONS.includes(collection) ? (
-								<div class="full-content-feed space-y-0 max-w-none sm:max-w-[90vw] lg:max-w-[85vw] xl:max-w-[1000px]">
+								<div class="full-content-feed space-y-0 max-w-none sm:max-w-[90vw] lg:max-w-[85vw] xl:max-w-[1100px]">
 									<style>
 										.full-content-feed-item:not(:last-child) {
 											border-bottom: 1px solid rgb(226 232 240);

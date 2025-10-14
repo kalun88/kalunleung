@@ -1,6 +1,6 @@
 ---
 import PageLayout from "@/layouts/Base.astro";
-import { getAllPages, getAllPosts, getPostContentByPostId, processFileBlocks } from "@/lib/notion/client";
+import { getAllPages, getAllPosts, getPostContentByPostId, processFileBlocks, processCoverImages } from "@/lib/notion/client";
 import { extractTargetBlocks, getNavLink, getReferencesInPage, resetCurrentHeadings, resetFirstImage, setCurrentHeadings, setTrackCurrentPageId } from "@/lib/blog-helpers";
 import NotionBlocks from "@/components/NotionBlocks.astro";
 import type { Post } from "@/lib/interfaces";
@@ -159,7 +159,10 @@ if (pageFound && page.Slug === HOME_PAGE_SLUG && RECENT_POSTS_ON_HOME_PAGE) {
 // New granular homepage collections system
 if (pageFound && page.Slug === HOME_PAGE_SLUG && HOMEPAGE_COLLECTIONS && Object.keys(HOMEPAGE_COLLECTIONS).length > 0) {
 		const all_posts = await getAllPosts();
-		
+
+		// Process cover images for all posts (downloads and optimizes them)
+		await processCoverImages(all_posts);
+
 		for (const [collectionName, config] of Object.entries(HOMEPAGE_COLLECTIONS)) {
 				if (config.enabled) {
 						let collection_posts = all_posts.filter((post) => post.Collection === collectionName);
@@ -217,8 +220,10 @@ if (pageFound && page.Slug === HOME_PAGE_SLUG && HOMEPAGE_COLLECTIONS && Object.
 						description: page.Excerpt || siteInfo.description,
 						ogImage: `/og-image/${page.Slug}.png`,
 				}}
+				bodyClass={page.Slug === HOME_PAGE_SLUG ? 'alphabet-soup-hero' : ''}
 		>
-				<div class="max-w-none sm:max-w-[90vw] lg:max-w-[85vw] xl:max-w-[1100px] sm:ml-8 print:ml-0 print:max-w-full">
+				{/* Main content wrapper */}
+				<div class={`${page.Slug === HOME_PAGE_SLUG ? 'relative z-10' : ''} max-w-none sm:max-w-[90vw] lg:max-w-[85vw] xl:max-w-[1100px] sm:ml-8 print:ml-0 print:max-w-full`}>
 						<article class="break-words" data-pagefind-body>
 								{shouldUseCache && cachedHtml ? (
 										<div class="post-body" data-html-type="cached" set:html={cachedHtml}></div>
@@ -233,17 +238,17 @@ if (pageFound && page.Slug === HOME_PAGE_SLUG && HOMEPAGE_COLLECTIONS && Object.
 				{/* New Granular Homepage Collections */}
 				{Object.entries(homepage_collections).map(([collectionName, data]) => (
 					data.posts && data.posts.length > 0 && (
-										<div key={collectionName} class="max-w-none sm:max-w-[90vw] lg:max-w-[85vw] xl:max-w-[1000px] sm:ml-8 print:ml-0 print:max-w-full">
+										<div key={collectionName} class={`${page.Slug === HOME_PAGE_SLUG ? 'relative z-10' : ''} max-w-none sm:max-w-[90vw] lg:max-w-[85vw] xl:max-w-[1100px] sm:ml-8 print:ml-0 print:max-w-full`}>
 							<a href={`#auto-${collectionName.toLowerCase().replace(/[^a-z0-9]/g, '-')}`} id={`auto-${collectionName.toLowerCase().replace(/[^a-z0-9]/g, '-')}`} class="inline" onclick="var fullUrl = `${window.location.origin}${window.location.pathname}#${id}`; navigator.clipboard.writeText(fullUrl);">
-								<h2 class="mb-4 mt-8 text-2xl font-normal hasId">
-									<strong class="font-semibold">{data.config.title}</strong>
+								<h2 class="mb-4 mt-8 text-xl font-semibold hasId">
+									{data.config.title}
 								</h2>
 							</a>
 							<section aria-label={`${data.config.title} list`}>
 							{data.config['display-style'] === 'medium-cards' ? (
 								// Portfolio/medium card style - clean grid without borders
 								<>
-									<div class="portfolio-cards grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-none sm:max-w-[90vw] lg:max-w-[85vw] xl:max-w-[1100px]">
+									<div class="portfolio-cards grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 											{data.posts.map((post) => (
 												<PostPreviewMedium key={post.id} post={post} as="h3" showPin={false} />
 											))}

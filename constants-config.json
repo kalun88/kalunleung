@@ -76,26 +76,26 @@
 		"table": "<<🗂️>>"
 	},
 	"two-column-layout": {
-		"column-1-width": "calc(50% - 8px)",
-		"column-2-width": "calc(50% - 8px)"
+		"column-1-width": "calc(50% - 16px)",
+		"column-2-width": "calc(50% - 16px)"
 	},
 	"three-column-layout": {
-		"column-1-width": "calc(15% - 11px)",
-		"column-2-width": "calc(55% - 11px)",
-		"column-3-width": "calc(30% - 11px)"
+		"column-1-width": "calc(15% - 21px)",
+		"column-2-width": "calc(55% - 21px)",
+		"column-3-width": "calc(30% - 21px)"
 	},
 	"four-column-layout": {
-		"column-1-width": "calc(25% - 12px)",
-		"column-2-width": "calc(25% - 12px)",
-		"column-3-width": "calc(25% - 12px)",
-		"column-4-width": "calc(25% - 12px)"
+		"column-1-width": "calc(25% - 24px)",
+		"column-2-width": "calc(25% - 24px)",
+		"column-3-width": "calc(25% - 24px)",
+		"column-4-width": "calc(25% - 24px)"
 	},
 	"recent-posts-on-home-page": false,
 	"homepage-collections": {
 
 		"▙ portfolio": {
 			"enabled": true,
-			"title": "Work2",
+			"title": "Projects",
 			"use-pinned": true,
 			"max-items": 3,
 			"display-style": "wide"

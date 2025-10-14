@@ -1,0 +1,621 @@
+<!DOCTYPE html> <!-- inject -->
+<style>
+    #alphabet-soup-wrapper {
+        width: 100%;
+        height: 600px;
+        position: relative;
+    }
+
+    body.alphabet-soup-hero #alphabet-soup-wrapper {
+        /* In hero mode, create a viewport-height container */
+        height: 100vh;
+        position: relative;
+        z-index: 0;
+    }
+
+    #alphabet-soup-canvas {
+        display: block;
+        cursor: crosshair;
+        width: 100%;
+        height: 600px;
+        background: transparent;
+        touch-action: none;
+    }
+
+    /* Full-screen hero mode styles */
+    body.alphabet-soup-hero #alphabet-soup-canvas {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: 1;
+        transition: opacity 0.1s ease-out;
+    }
+
+    /* Fade out canvas when scrolled - opacity controlled by JS */
+    body.alphabet-soup-hero.scrolled #alphabet-soup-canvas {
+        pointer-events: none;
+    }
+
+    /* Scroll indicator */
+    .scroll-indicator {
+        position: fixed;
+        bottom: 2rem;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 10;
+        opacity: 0.6;
+        transition: opacity 0.3s ease;
+        animation: bounce 2s infinite;
+        display: none;
+        color: currentColor;
+    }
+
+    body.alphabet-soup-hero .scroll-indicator {
+        display: block;
+    }
+
+    .scroll-indicator:hover {
+        opacity: 1;
+    }
+
+    @keyframes bounce {
+        0%, 20%, 50%, 80%, 100% {
+            transform: translateX(-50%) translateY(0);
+        }
+        40% {
+            transform: translateX(-50%) translateY(-10px);
+        }
+        60% {
+            transform: translateX(-50%) translateY(-5px);
+        }
+    }
+
+    /* Hide scroll indicator after scrolling */
+    body.scrolled .scroll-indicator {
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    /* Header needs to be above the canvas so navigation is clickable */
+    body.alphabet-soup-hero header {
+        position: relative;
+        z-index: 100;
+        background: none !important;
+        background-color: transparent !important;
+    }
+
+    /* Remove any backgrounds or borders from header elements - be more aggressive */
+    body.alphabet-soup-hero header *,
+    body.alphabet-soup-hero header nav,
+    body.alphabet-soup-hero header div,
+    body.alphabet-soup-hero header a {
+        background: none !important;
+        background-color: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+
+    /* Specifically target the navigation menu that has bg-bgColor class */
+    body.alphabet-soup-hero #navigation-menu {
+        background: none !important;
+        background-color: transparent !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        box-shadow: none !important;
+    }
+
+    /* Ensure header backdrop is transparent */
+    body.alphabet-soup-hero header::before,
+    body.alphabet-soup-hero header::after {
+        display: none !important;
+    }
+
+    /* Content area below the hero animation gets solid background */
+    body.alphabet-soup-hero main {
+        background: #f9f9f9;
+    }
+
+    body.alphabet-soup-hero.dark main {
+        background: #1c1e20;
+    }
+</style>
+
+<div id="alphabet-soup-wrapper">
+    <canvas id="alphabet-soup-canvas"></canvas>
+
+    <!-- Scroll indicator (only shown in hero mode) -->
+    <div class="scroll-indicator" id="scroll-indicator">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+    </div>
+</div>
+
+<script>
+    // Store animation frame ID and cleanup function
+    let animationFrameId = null;
+    let cleanupFunctions = [];
+
+    function initAlphabetSoup() {
+        const canvas = document.getElementById('alphabet-soup-canvas');
+        if (!canvas) return;
+
+        // Clean up previous instance
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+            animationFrameId = null;
+        }
+        cleanupFunctions.forEach(fn => fn());
+        cleanupFunctions = [];
+
+        const ctx = canvas.getContext('2d');
+
+        // Set canvas dimensions
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+        }
+        resizeCanvas();
+
+        const resizeHandler = () => resizeCanvas();
+        window.addEventListener('resize', resizeHandler);
+        cleanupFunctions.push(() => window.removeEventListener('resize', resizeHandler));
+
+        // Draw bullet journal dotted grid background
+        function drawGrid() {
+            const dotSpacing = 20; // Space between dots
+            const dotSize = 1.5; // Size of each dot
+            const fadeDistance = 100; // Distance from edge where fade starts
+
+            ctx.save();
+
+            for (let x = dotSpacing; x < canvas.width; x += dotSpacing) {
+                for (let y = dotSpacing; y < canvas.height; y += dotSpacing) {
+                    // Calculate distance from edges
+                    const distFromLeft = x;
+                    const distFromRight = canvas.width - x;
+                    const distFromTop = y;
+                    const distFromBottom = canvas.height - y;
+
+                    // Find minimum distance to any edge
+                    const minDistToEdge = Math.min(
+                        distFromLeft,
+                        distFromRight,
+                        distFromTop,
+                        distFromBottom
+                    );
+
+                    // Calculate alpha based on distance to edge
+                    let alpha = 0.15; // Base opacity for center dots
+                    if (minDistToEdge < fadeDistance) {
+                        alpha = 0.15 * (minDistToEdge / fadeDistance);
+                    }
+
+                    ctx.fillStyle = `rgba(203, 41, 65, ${alpha})`;
+                    ctx.beginPath();
+                    ctx.arc(x, y, dotSize, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            ctx.restore();
+        }
+
+        // Symbol set
+        const symbols = ['梁', '家', '綸', '▁', '▄', '▉', '▇', '▙', '▞', '▦', '◍'];
+        const color = 'rgb(203, 41, 65)';
+
+        // Particles
+        const particles = [];
+        const permanentParticles = [];
+        const MAX_PARTICLES = 300;
+        const MAX_PERMANENT = 500;
+
+        // Mouse state
+        let mouseX = 0;
+        let mouseY = 0;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+        let mouseSpeed = 0;
+        let isMouseDown = false;
+        let isEraseMode = false;
+
+        // Get mouse position relative to canvas
+        function getMousePos(e) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+        }
+
+        // Calculate edge fade factor based on distance to nearest edge
+        function getEdgeFadeFactor(x, y) {
+            const fadeDistance = 80; // Distance from edge where fade starts
+
+            const distFromLeft = x;
+            const distFromRight = canvas.width - x;
+            const distFromTop = y;
+            const distFromBottom = canvas.height - y;
+
+            const minDistToEdge = Math.min(
+                distFromLeft,
+                distFromRight,
+                distFromTop,
+                distFromBottom
+            );
+
+            if (minDistToEdge < fadeDistance) {
+                return minDistToEdge / fadeDistance;
+            }
+            return 1.0;
+        }
+
+        // Particle class for temporary trail
+        class Particle {
+            constructor(x, y, size, symbol) {
+                this.x = x;
+                this.y = y;
+                this.size = size;
+                this.symbol = symbol;
+                this.alpha = 1.0;
+                this.vx = (Math.random() - 0.5) * 0.5;
+                this.vy = (Math.random() - 0.5) * 0.5;
+                this.fadeRate = 0.008 + Math.random() * 0.005; // Slower fade (was 0.015 + 0.01)
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.alpha -= this.fadeRate;
+            }
+
+            draw() {
+                const edgeFade = getEdgeFadeFactor(this.x, this.y);
+                const finalAlpha = this.alpha * edgeFade;
+
+                ctx.save();
+                ctx.globalAlpha = finalAlpha;
+                ctx.fillStyle = color;
+                ctx.font = `${this.size}px monospace`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(this.symbol, this.x, this.y);
+                ctx.restore();
+            }
+
+            isDead() {
+                return this.alpha <= 0;
+            }
+        }
+
+        // Permanent particle class
+        class PermanentParticle {
+            constructor(x, y, size, symbol) {
+                this.x = x;
+                this.y = y;
+                this.size = size;
+                this.symbol = symbol;
+            }
+
+            draw() {
+                const edgeFade = getEdgeFadeFactor(this.x, this.y);
+
+                ctx.save();
+                ctx.globalAlpha = edgeFade;
+                ctx.fillStyle = color;
+                ctx.font = `${this.size}px monospace`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(this.symbol, this.x, this.y);
+                ctx.restore();
+            }
+
+            distanceTo(x, y) {
+                const dx = this.x - x;
+                const dy = this.y - y;
+                return Math.sqrt(dx * dx + dy * dy);
+            }
+        }
+
+        // Create particles based on mouse movement
+        function createParticles(x, y, speed) {
+            // Get fade factor - reduce particle creation near edges
+            const edgeFade = getEdgeFadeFactor(x, y);
+
+            // Don't create trail particles if too close to edge
+            if (edgeFade < 0.5) {
+                return;
+            }
+
+            const baseSize = 20;
+            const speedMultiplier = Math.min(speed / 10, 5); // Increased from 3 to 5
+            const size = baseSize + (speedMultiplier * 25); // Increased from 15 to 25
+
+            // Make particles sparse using probability
+            const probability = (0.35 + speed / 150) * edgeFade; // 35% base chance + speed bonus
+
+            // Only create particle based on probability
+            if (Math.random() < probability) {
+                if (particles.length >= MAX_PARTICLES) {
+                    particles.shift();
+                }
+
+                const offsetX = (Math.random() - 0.5) * 10;
+                const offsetY = (Math.random() - 0.5) * 10;
+                const symbol = symbols[Math.floor(Math.random() * symbols.length)];
+
+                particles.push(new Particle(x + offsetX, y + offsetY, size, symbol));
+            }
+        }
+
+        // Create permanent particle (painting mode) - matches trail density
+        function createPermanentParticle(x, y, speed) {
+            // Get fade factor - reduce particle creation near edges
+            const edgeFade = getEdgeFadeFactor(x, y);
+
+            // Don't create permanent particles if too close to edge
+            if (edgeFade < 0.3) {
+                return;
+            }
+
+            // Use same logic as trail particles for consistent density
+            const baseSize = 20;
+            const speedMultiplier = Math.min(speed / 10, 5);
+            const size = baseSize + (speedMultiplier * 25);
+
+            // Same probability as the trail for consistent density
+            const probability = (0.35 + speed / 150) * edgeFade;
+
+            // Only create particle based on probability
+            if (Math.random() < probability) {
+                if (permanentParticles.length >= MAX_PERMANENT) {
+                    permanentParticles.shift();
+                }
+
+                const offsetX = (Math.random() - 0.5) * 10;
+                const offsetY = (Math.random() - 0.5) * 10;
+                const symbol = symbols[Math.floor(Math.random() * symbols.length)];
+
+                permanentParticles.push(new PermanentParticle(x + offsetX, y + offsetY, size, symbol));
+            }
+        }
+
+        // Erase permanent particles near cursor
+        function eraseNearby(x, y) {
+            const eraseRadius = 40;
+            for (let i = permanentParticles.length - 1; i >= 0; i--) {
+                if (permanentParticles[i].distanceTo(x, y) < eraseRadius) {
+                    permanentParticles.splice(i, 1);
+                }
+            }
+        }
+
+        // Mouse events
+        const handleMouseMove = (e) => {
+            const pos = getMousePos(e);
+            lastMouseX = mouseX;
+            lastMouseY = mouseY;
+            mouseX = pos.x;
+            mouseY = pos.y;
+
+            const dx = mouseX - lastMouseX;
+            const dy = mouseY - lastMouseY;
+            mouseSpeed = Math.sqrt(dx * dx + dy * dy);
+
+            if (isEraseMode) {
+                eraseNearby(mouseX, mouseY);
+            } else if (isMouseDown) {
+                createPermanentParticle(mouseX, mouseY, mouseSpeed);
+            } else {
+                createParticles(mouseX, mouseY, mouseSpeed);
+            }
+        };
+
+        const handleMouseDown = (e) => {
+            const pos = getMousePos(e);
+            mouseX = pos.x;
+            mouseY = pos.y;
+            isMouseDown = true;
+            if (!isEraseMode) {
+                createPermanentParticle(mouseX, mouseY, 0);
+            }
+        };
+
+        const handleMouseUp = () => {
+            isMouseDown = false;
+        };
+
+        const handleMouseLeave = () => {
+            isMouseDown = false;
+        };
+
+        canvas.addEventListener('mousemove', handleMouseMove);
+        canvas.addEventListener('mousedown', handleMouseDown);
+        canvas.addEventListener('mouseup', handleMouseUp);
+        canvas.addEventListener('mouseleave', handleMouseLeave);
+
+        cleanupFunctions.push(() => {
+            canvas.removeEventListener('mousemove', handleMouseMove);
+            canvas.removeEventListener('mousedown', handleMouseDown);
+            canvas.removeEventListener('mouseup', handleMouseUp);
+            canvas.removeEventListener('mouseleave', handleMouseLeave);
+        });
+
+        // Touch events for mobile
+        const handleTouchMove = (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const pos = getMousePos(touch);
+            lastMouseX = mouseX;
+            lastMouseY = mouseY;
+            mouseX = pos.x;
+            mouseY = pos.y;
+
+            const dx = mouseX - lastMouseX;
+            const dy = mouseY - lastMouseY;
+            mouseSpeed = Math.sqrt(dx * dx + dy * dy);
+
+            if (isEraseMode) {
+                eraseNearby(mouseX, mouseY);
+            } else {
+                createParticles(mouseX, mouseY, mouseSpeed);
+            }
+        };
+
+        const handleTouchStart = (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const pos = getMousePos(touch);
+            mouseX = pos.x;
+            mouseY = pos.y;
+            if (!isEraseMode) {
+                createPermanentParticle(mouseX, mouseY, 0);
+            }
+        };
+
+        canvas.addEventListener('touchmove', handleTouchMove);
+        canvas.addEventListener('touchstart', handleTouchStart);
+
+        cleanupFunctions.push(() => {
+            canvas.removeEventListener('touchmove', handleTouchMove);
+            canvas.removeEventListener('touchstart', handleTouchStart);
+        });
+
+        // Keyboard events for erase mode
+        const handleKeyDown = (e) => {
+            if (e.code === 'Space' && document.activeElement === document.body) {
+                e.preventDefault();
+                isEraseMode = true;
+                canvas.style.cursor = 'not-allowed';
+            }
+        };
+
+        const handleKeyUp = (e) => {
+            if (e.code === 'Space') {
+                isEraseMode = false;
+                canvas.style.cursor = 'crosshair';
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', handleKeyUp);
+
+        cleanupFunctions.push(() => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('keyup', handleKeyUp);
+        });
+
+        // Animation loop
+        function animate() {
+            // Clear with full opacity for clean frame
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw grid background first
+            drawGrid();
+
+            // Draw permanent particles (middle layer)
+            for (const particle of permanentParticles) {
+                particle.draw();
+            }
+
+            // Update and draw temporary trail particles (top layer)
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const particle = particles[i];
+                particle.update();
+
+                if (particle.isDead()) {
+                    particles.splice(i, 1);
+                } else {
+                    particle.draw();
+                }
+            }
+
+            animationFrameId = requestAnimationFrame(animate);
+        }
+
+        // Start animation
+        animate();
+
+        // Hero mode: scroll indicator management and canvas fade
+        if (document.body.classList.contains('alphabet-soup-hero')) {
+            const scrollIndicator = document.getElementById('scroll-indicator');
+
+            // Calculate fade distance based on viewport height
+            // Start fading at 50vh, fully transparent by 100vh (one full screen scroll)
+            const fadeStartDistance = window.innerHeight * 0.5;  // 50% of viewport height
+            const fadeEndDistance = window.innerHeight * 1.0;     // 100% of viewport height
+
+            // Handle scroll events with progressive opacity
+            function updateCanvasOpacity() {
+                const scrollY = window.scrollY;
+
+                if (scrollY <= fadeStartDistance) {
+                    // Fully visible - before fade starts
+                    canvas.style.opacity = '1';
+                    document.body.classList.remove('scrolled');
+                } else if (scrollY >= fadeEndDistance) {
+                    // Fully transparent - after fade ends
+                    canvas.style.opacity = '0';
+                    document.body.classList.add('scrolled');
+                } else {
+                    // Progressive fade between fadeStart and fadeEnd
+                    const fadeProgress = (scrollY - fadeStartDistance) / (fadeEndDistance - fadeStartDistance);
+                    const opacity = 1 - fadeProgress;
+                    canvas.style.opacity = opacity.toString();
+
+                    // Add scrolled class when mostly faded
+                    if (opacity < 0.3) {
+                        document.body.classList.add('scrolled');
+                    } else {
+                        document.body.classList.remove('scrolled');
+                    }
+                }
+            }
+
+            // Update on scroll
+            window.addEventListener('scroll', updateCanvasOpacity);
+
+            // Initial call
+            updateCanvasOpacity();
+
+            // Update fade distances on window resize
+            const handleHeroResize = () => {
+                const newFadeStart = window.innerHeight * 0.5;
+                const newFadeEnd = window.innerHeight * 1.0;
+                updateCanvasOpacity();
+            };
+            window.addEventListener('resize', handleHeroResize);
+
+            // Click scroll indicator to scroll down
+            const handleScrollIndicatorClick = () => {
+                window.scrollTo({
+                    top: window.innerHeight,
+                    behavior: 'smooth'
+                });
+            };
+            scrollIndicator?.addEventListener('click', handleScrollIndicatorClick);
+
+            cleanupFunctions.push(() => {
+                window.removeEventListener('scroll', updateCanvasOpacity);
+                window.removeEventListener('resize', handleHeroResize);
+                scrollIndicator?.removeEventListener('click', handleScrollIndicatorClick);
+            });
+        }
+    }
+
+    // Initialize on page load
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initAlphabetSoup);
+    } else {
+        initAlphabetSoup();
+    }
+
+    // Re-initialize after Astro View Transitions navigation
+    document.addEventListener('astro:page-load', initAlphabetSoup);
+</script>

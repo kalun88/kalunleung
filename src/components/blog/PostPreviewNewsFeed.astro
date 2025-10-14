@@ -1,7 +1,6 @@
 ---
 import type { Post } from "@/lib/interfaces";
 import { extractTargetBlocks, filePath, getPostLink, getNavLink } from "@/lib/blog-helpers";
-import { getPostContentByPostId } from "@/lib/notion/client";
 import { MENU_PAGES_COLLECTION } from "@/constants";
 import NotionBlocks from "@/components/NotionBlocks.astro";
 import FormattedDate from "@/components/FormattedDate.astro";
@@ -25,26 +24,26 @@ const postDate = post.Date ? new Date(post.Date + 'T00:00:00') : null;
 // Use the same link generation as PostPreviewMedium
 const postLink = getPostLink(post.Slug, post.Collection === MENU_PAGES_COLLECTION);
 
-// Get content blocks for image only
-const { blocks } = await getPostContentByPostId(post);
-
-// Look for the first image in the content
-let firstImageUrl = "";
-const imageBlock = blocks.find(block => block.Type === "image" && block.NImage);
-
-if (imageBlock && imageBlock.NImage) {
-	const imageData = imageBlock.NImage;
-	
-	if (imageData.File && imageData.File.Url) {
-		try {
-			// Use OptimizedUrl if available, otherwise Url
-			const imageUrl = imageData.File.OptimizedUrl || imageData.File.Url;
-			firstImageUrl = filePath(new URL(imageUrl));
-		} catch (err) {
-			console.log(`Image URL error for ${post.Title}:`, err);
+// Use Cover image from post object (already fetched, no extra API call needed)
+// For 'file' type covers: in dev mode use direct Notion URL, in build use processed local images
+// For 'external' type covers: always use direct URL (external links don't expire)
+let coverImageUrl = "";
+if (post.Cover && post.Cover.Url) {
+	if (post.Cover.Type === 'file') {
+		// In dev mode, use direct Notion URL since images aren't processed yet
+		// In production build, use filePath() to serve optimized local images
+		if (import.meta.env.DEV) {
+			coverImageUrl = post.Cover.Url; // Direct Notion URL for dev
+		} else {
+			try {
+				coverImageUrl = filePath(new URL(post.Cover.Url));
+			} catch (err) {
+				console.log(`Cover image URL error for ${post.Title}:`, err);
+				coverImageUrl = post.Cover.Url; // Fallback to direct URL
+			}
 		}
-	} else if (imageData.External && imageData.External.Url) {
-		firstImageUrl = imageData.External.Url;
+	} else {
+		coverImageUrl = post.Cover.Url; // External URL - use directly
 	}
 }
 
