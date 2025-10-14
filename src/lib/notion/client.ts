@@ -787,7 +787,7 @@ export async function processFileBlocks(fileAttachedBlocks: Block[]) {
 }
 
 export async function processCoverImages(posts: Post[]) {
-	await Promise.all(
+	const results = await Promise.allSettled(
 		posts.map(async (post) => {
 			if (!post.Cover || !post.Cover.Url) {
 				return null;
@@ -820,6 +820,7 @@ export async function processCoverImages(posts: Post[]) {
 
 					if (expiryTime < Date.now()) {
 						// URL expired, need to refetch the post to get new URL
+						console.log(`Cover URL expired for post "${post.Title}", refetching...`);
 						const updatedPost = await getPostByPageId(post.PageId);
 						if (updatedPost && updatedPost.Cover && updatedPost.Cover.Url) {
 							url = new URL(updatedPost.Cover.Url);
@@ -827,12 +828,21 @@ export async function processCoverImages(posts: Post[]) {
 					}
 				}
 
+				console.log(`Downloading cover image for "${post.Title}": ${url.pathname.split('/').slice(-2).join('/')}`);
 				return downloadFile(url); // Download and optimize the cover image
 			}
 
 			return null;
 		}),
 	);
+
+	// Log any failures
+	results.forEach((result, index) => {
+		if (result.status === 'rejected') {
+			const post = posts[index];
+			console.error(`Failed to process cover image for "${post.Title}":`, result.reason);
+		}
+	});
 }
 
 export async function getDataSource(): Promise<Database> {
