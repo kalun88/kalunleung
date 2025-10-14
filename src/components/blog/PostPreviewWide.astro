@@ -17,12 +17,39 @@ interface Props {
 const { post, as: Tag = "div", showPin = true } = Astro.props;
 const postLink = getPostLink(post.Slug, post.Collection === MENU_PAGES_COLLECTION);
 
-// Use FeaturedImages array - show up to 2 images side by side
+// Use FeaturedImages array - show up to 3 images with smart layout
 let selectedImages: string[] = [];
 if (post.FeaturedImages && post.FeaturedImages.length > 0) {
-	// Take first 2 images if available
-	selectedImages = post.FeaturedImages.slice(0, 2).map(img => img.Url);
+	// Take first 3 images if available
+	selectedImages = post.FeaturedImages.slice(0, 3).map(img => img.Url);
 }
+
+// Seeded random for consistent but varied layouts per post
+const seed = post.PageId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+const seededRandom = (min: number, max: number, offset: number = 0) => {
+	const x = Math.sin(seed + offset) * 10000;
+	return min + (x - Math.floor(x)) * (max - min);
+};
+
+// Generate layout parameters for 2+ images - artistic overlapping layout with better visibility
+// Images should be shuffled/spread out so ~70% of each image remains visible
+const img1Scale = seededRandom(0.9, 1.0, 1);
+const img1Rotation = seededRandom(-5, -2, 2);
+const img1OffsetX = seededRandom(-25, -10, 3);  // Spread further left
+const img1OffsetY = seededRandom(-10, 5, 4);
+const img1ZIndex = seededRandom(0, 1, 5) > 0.5 ? 2 : 1;
+
+const img2Scale = seededRandom(0.85, 0.95, 6);
+const img2Rotation = seededRandom(2, 5, 7);
+const img2OffsetX = seededRandom(10, 25, 8);  // Spread further right
+const img2OffsetY = seededRandom(-5, 10, 9);
+const img2ZIndex = img1ZIndex === 2 ? 1 : 2;
+
+const img3Scale = seededRandom(0.8, 0.9, 10);
+const img3Rotation = seededRandom(-3, 3, 11);
+const img3OffsetX = seededRandom(-5, 5, 12);  // Keep center-ish
+const img3OffsetY = seededRandom(8, 18, 13);  // Push down more
+const img3ZIndex = 3;
 ---
 
 <!-- Wide feed layout: 3-column horizontal card -->
@@ -88,21 +115,125 @@ if (post.FeaturedImages && post.FeaturedImages.length > 0) {
 			)}
 		</div>
 
-		<!-- Column 3: Cover image(s) - side by side if 2 images -->
-		<div class="flex gap-3 items-center justify-end min-w-[200px]">
+		<!-- Column 3: Cover image(s) - artistic overlapping layout for 2-3 images -->
+		<div class="flex gap-2 items-center justify-end min-w-[200px] flex-wrap">
 			{selectedImages.length > 0 ? (
-				selectedImages.map((imgUrl, index) => (
+				selectedImages.length === 3 ? (
+					<!-- 3 images: artistic overlapping collage -->
+					<div class="relative flex items-center justify-center" style="width: 180px; height: 120px;">
+						<!-- Image 1 -->
+						<div
+							class="absolute overflow-hidden shadow-md transition-all duration-300 hover:z-20 hover:scale-105"
+							style={`
+								width: 100px;
+								height: 100px;
+								transform: translateX(${img1OffsetX}px) translateY(${img1OffsetY}px) rotate(${img1Rotation}deg) scale(${img1Scale});
+								z-index: ${img1ZIndex};
+								transform-origin: center;
+							`}
+						>
+							<img
+								src={selectedImages[0]}
+								alt={`Image 1 for ${post.Title}`}
+								class="w-full h-full object-cover"
+								loading="lazy"
+								decoding="async"
+							/>
+						</div>
+						<!-- Image 2 -->
+						<div
+							class="absolute overflow-hidden shadow-md transition-all duration-300 hover:z-20 hover:scale-105"
+							style={`
+								width: 100px;
+								height: 100px;
+								transform: translateX(${img2OffsetX}px) translateY(${img2OffsetY}px) rotate(${img2Rotation}deg) scale(${img2Scale});
+								z-index: ${img2ZIndex};
+								transform-origin: center;
+							`}
+						>
+							<img
+								src={selectedImages[1]}
+								alt={`Image 2 for ${post.Title}`}
+								class="w-full h-full object-cover"
+								loading="lazy"
+								decoding="async"
+							/>
+						</div>
+						<!-- Image 3 -->
+						<div
+							class="absolute overflow-hidden shadow-md transition-all duration-300 hover:z-20 hover:scale-105"
+							style={`
+								width: 100px;
+								height: 100px;
+								transform: translateX(${img3OffsetX}px) translateY(${img3OffsetY}px) rotate(${img3Rotation}deg) scale(${img3Scale});
+								z-index: ${img3ZIndex};
+								transform-origin: center;
+							`}
+						>
+							<img
+								src={selectedImages[2]}
+								alt={`Image 3 for ${post.Title}`}
+								class="w-full h-full object-cover"
+								loading="lazy"
+								decoding="async"
+							/>
+						</div>
+					</div>
+				) : selectedImages.length === 2 ? (
+					<!-- 2 images: artistic overlapping dual layout -->
+					<div class="relative flex items-center justify-center" style="width: 180px; height: 120px;">
+						<!-- Image 1 -->
+						<div
+							class="absolute overflow-hidden shadow-md transition-all duration-300 hover:z-20 hover:scale-105"
+							style={`
+								width: 100px;
+								height: 100px;
+								transform: translateX(${img1OffsetX}px) translateY(${img1OffsetY}px) rotate(${img1Rotation}deg) scale(${img1Scale});
+								z-index: ${img1ZIndex};
+								transform-origin: center;
+							`}
+						>
+							<img
+								src={selectedImages[0]}
+								alt={`Image 1 for ${post.Title}`}
+								class="w-full h-full object-cover"
+								loading="lazy"
+								decoding="async"
+							/>
+						</div>
+						<!-- Image 2 -->
+						<div
+							class="absolute overflow-hidden shadow-md transition-all duration-300 hover:z-20 hover:scale-105"
+							style={`
+								width: 100px;
+								height: 100px;
+								transform: translateX(${img2OffsetX}px) translateY(${img2OffsetY}px) rotate(${img2Rotation}deg) scale(${img2Scale});
+								z-index: ${img2ZIndex};
+								transform-origin: center;
+							`}
+						>
+							<img
+								src={selectedImages[1]}
+								alt={`Image 2 for ${post.Title}`}
+								class="w-full h-full object-cover"
+								loading="lazy"
+								decoding="async"
+							/>
+						</div>
+					</div>
+				) : (
+					<!-- Single image: larger display -->
 					<div class="relative overflow-hidden shadow-sm group-hover:shadow-md transition-shadow">
 						<img
-							src={imgUrl}
-							alt={`Image ${index + 1} for ${post.Title}`}
+							src={selectedImages[0]}
+							alt={`Cover image for ${post.Title}`}
 							class="object-cover transition-transform duration-300 group-hover:scale-105"
-							style={selectedImages.length === 1 ? "width: 180px; height: 120px;" : "width: 90px; height: 90px;"}
+							style="width: 180px; height: 120px;"
 							loading="lazy"
 							decoding="async"
 						/>
 					</div>
-				))
+				)
 			) : (
 				<div class="flex h-28 w-36 items-center justify-center bg-gray-100 dark:bg-gray-800">
 					<Icon
