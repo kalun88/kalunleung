@@ -635,6 +635,33 @@ export function generateFilePath(url: URL, convertoWebp: boolean = false) {
 
 	return filepath;
 }
+
+// Generate a stable file path using Post ID and filename instead of Notion's changing UUID
+export function generateStableFilePath(postId: string, url: URL, convertoWebp: boolean = false) {
+	const BASE_DIR = BUILD_FOLDER_PATHS["publicNotion"];
+	// Use the Post's PageId as the directory (stable across builds)
+	const dir = path.join(BASE_DIR, postId);
+
+	if (!fs.existsSync(dir)) {
+		fs.mkdirSync(dir, { recursive: true });
+	}
+
+	// Get the filename from the URL (last segment)
+	const segments = url.pathname.split("/");
+	const filename = decodeURIComponent(segments.slice(-1)[0]);
+	let filepath = path.join(dir, filename);
+
+	if (convertoWebp && isConvImageType(filename)) {
+		// Remove original extension and append .webp
+		const extIndex = filename.lastIndexOf(".");
+		if (extIndex !== -1) {
+			const nameWithoutExt = filename.substring(0, extIndex);
+			filepath = path.join(dir, `${nameWithoutExt}.webp`);
+		}
+	}
+
+	return filepath;
+}
 export function isConvImageType(filepath: string) {
 	if (
 		filepath.includes(".png") ||
@@ -651,6 +678,8 @@ export async function downloadFile(
 	url: URL,
 	optimize_img: boolean = true,
 	isFavicon: boolean = false,
+	customFilepath?: string,
+	customWebpPath?: string,
 ) {
 	optimize_img = optimize_img ? OPTIMIZE_IMAGES : optimize_img;
 	let res!: AxiosResponse;
@@ -671,7 +700,7 @@ export async function downloadFile(
 		return Promise.resolve();
 	}
 
-	const filepath = generateFilePath(url);
+	const filepath = customFilepath || generateFilePath(url);
 
 	let stream = res.data;
 	if (res.headers["content-type"] === "image/jpeg") {
@@ -706,7 +735,7 @@ export async function downloadFile(
 
 	if (isImage && isConvImageType(filepath) && optimize_img) {
 		// Process and write only the optimized webp image
-		const webpPath = generateFilePath(url, true);
+		const webpPath = customWebpPath || generateFilePath(url, true);
 		// console.log('Writing to', webpPath);
 		await stream
 			.pipe(
@@ -862,10 +891,13 @@ export async function processFeaturedImages(posts: Post[]) {
 					}
 
 					let url = new URL(featuredImage.Url);
-					const cacheFilePath = generateFilePath(url, isConvImageType(url.pathname) && OPTIMIZE_IMAGES);
+
+					// Use stable filepath based on Post ID instead of Notion's changing UUID
+					const stableFilepath = generateStableFilePath(post.PageId, url, false);
+					const stableWebpPath = generateStableFilePath(post.PageId, url, true);
 
 					const shouldDownload = LAST_BUILD_TIME
-						? post.LastUpdatedTimeStamp > LAST_BUILD_TIME || !fs.existsSync(cacheFilePath)
+						? post.LastUpdatedTimeStamp > LAST_BUILD_TIME || !fs.existsSync(stableWebpPath)
 						: true;
 
 					if (shouldDownload) {
@@ -890,7 +922,8 @@ export async function processFeaturedImages(posts: Post[]) {
 						}
 
 						console.log(`Downloading featured image ${index + 1} for "${post.Title}": ${url.pathname.split('/').slice(-2).join('/')}`);
-						return downloadFile(url); // Download and optimize the featured image
+						// Download to stable path
+						return downloadFile(url, true, false, stableFilepath, stableWebpPath);
 					}
 
 					return null;
@@ -1464,20 +1497,28 @@ function _buildPost(pageObject: responses.PageObject): Post {
 		featuredImages = prop.FeaturedImage.files.map((file) => {
 			if (file.external) {
 				return {
-					Type: prop.FeaturedImage.type,
+					Type: 'external',
 					Url: file.external.url,
 				};
-			} else if (file.file) {
+			} else if (file.file && file.file.url) {
+				// Generate stable URL path using Post ID instead of Notion's changing UUID
+				const url = new URL(file.file.url);
+				const segments = url.pathname.split("/");
+				const lastSegment = segments.slice(-1)[0];
+				const filename = lastSegment ? decodeURIComponent(lastSegment) : 'image';
+
+				let optimizedUrl = file.file.url;
+				if (isConvImageType(file.file.url) && OPTIMIZE_IMAGES) {
+					// Create stable path: /notion/{pageId}/{filename}.webp
+					const extIndex = filename.lastIndexOf(".");
+					const nameWithoutExt = extIndex !== -1 ? filename.substring(0, extIndex) : filename;
+					optimizedUrl = `/notion/${pageObject.id}/${nameWithoutExt}.webp`;
+				}
+
 				return {
-					Type: prop.FeaturedImage.type,
+					Type: 'file',
 					Url: file.file.url,
-					OptimizedUrl:
-						isConvImageType(file.file.url) && OPTIMIZE_IMAGES
-							? file.file.url.substring(
-									0,
-									file.file.url.lastIndexOf("."),
-								) + ".webp"
-							: file.file.url,
+					OptimizedUrl: optimizedUrl,
 					ExpiryTime: file.file.expiry_time,
 				};
 			}

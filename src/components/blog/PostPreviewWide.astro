@@ -23,13 +23,17 @@ let selectedImages: string[] = [];
 if (post.FeaturedImages && post.FeaturedImages.length > 0) {
 	// Take first 3 images if available
 	selectedImages = post.FeaturedImages.slice(0, 3).map(img => {
-		// For external URLs, use as-is; for Notion file URLs, use cached local path
+		// For external URLs, use as-is
 		if (img.Type === 'external') {
 			return img.Url;
 		}
-		// For Notion uploaded files, use the OptimizedUrl (webp) if available, otherwise original
-		const urlToUse = img.OptimizedUrl || img.Url;
-		return filePath(new URL(urlToUse));
+		// For Notion uploaded files, OptimizedUrl is already a stable path like /notion/{pageId}/image.webp
+		// If OptimizedUrl starts with /, it's already a path, otherwise convert from Notion URL
+		const optimizedUrl = img.OptimizedUrl || img.Url;
+		if (optimizedUrl.startsWith('/')) {
+			return optimizedUrl;
+		}
+		return filePath(new URL(optimizedUrl));
 	});
 }
 
