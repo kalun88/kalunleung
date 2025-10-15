@@ -26,8 +26,16 @@ const postDate = post.Date ? new Date(post.Date + 'T00:00:00') : null;
 const postLink = getPostLink(post.Slug, post.Collection === MENU_PAGES_COLLECTION);
 
 // Use FeaturedImages array (for consistency, though not displayed in this layout)
+// Convert Notion URLs to local cached paths
 const images = post.FeaturedImages && post.FeaturedImages.length > 0
-	? post.FeaturedImages.map(img => img.Url)
+	? post.FeaturedImages.map(img => {
+		// For external URLs, use as-is; for Notion file URLs, use cached local path
+		if (img.Type === 'external') {
+			return img.Url;
+		}
+		// For Notion uploaded files, use the local cached path
+		return filePath(new URL(img.Url));
+	})
 	: [];
 
 const borderClasses = enableBorder && !isLast ? "border-b border-slate-200 pb-2 mb-2" : "";

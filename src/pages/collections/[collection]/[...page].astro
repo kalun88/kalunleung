@@ -7,7 +7,7 @@ import PostPreviewMedium from "@/components/blog/PostPreviewMedium.astro";
 import PostPreviewNewsFeed from "@/components/blog/PostPreviewNewsFeed.astro";
 import PostPreviewWide from "@/components/blog/PostPreviewWide.astro";
 import Pagination from "@/components/Paginator.astro";
-import { getAllPosts, getUniqueTags, getAllTagsWithCounts, processCoverImages } from "@/lib/notion/client";
+import { getAllPosts, getUniqueTags, getAllTagsWithCounts, processCoverImages, processFeaturedImages } from "@/lib/notion/client";
 import type { Post, SelectProperty } from "@/lib/interfaces";
 import { getCollectionsWDesc, slugify } from "@/utils";
 import { getNotionColorToTailwindColor } from "@/lib/style-helpers";
@@ -21,8 +21,9 @@ export const getStaticPaths = (async ({ paginate }) => {
 				posts = posts.filter((post) => !post.Slug.startsWith("_"));
 		}
 
-		// Process cover images for all posts (downloads and optimizes them)
+		// Process cover and featured images for all posts (downloads and optimizes them)
 		await processCoverImages(posts);
+		await processFeaturedImages(posts);
 
 		const collections = await getCollectionsWDesc();
 

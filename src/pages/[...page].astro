@@ -1,6 +1,6 @@
 ---
 import PageLayout from "@/layouts/Base.astro";
-import { getAllPages, getAllPosts, getPostContentByPostId, processFileBlocks, processCoverImages } from "@/lib/notion/client";
+import { getAllPages, getAllPosts, getPostContentByPostId, processFileBlocks, processCoverImages, processFeaturedImages } from "@/lib/notion/client";
 import { extractTargetBlocks, getNavLink, getReferencesInPage, resetCurrentHeadings, resetFirstImage, setCurrentHeadings, setTrackCurrentPageId } from "@/lib/blog-helpers";
 import NotionBlocks from "@/components/NotionBlocks.astro";
 import type { Post } from "@/lib/interfaces";
@@ -160,8 +160,9 @@ if (pageFound && page.Slug === HOME_PAGE_SLUG && RECENT_POSTS_ON_HOME_PAGE) {
 if (pageFound && page.Slug === HOME_PAGE_SLUG && HOMEPAGE_COLLECTIONS && Object.keys(HOMEPAGE_COLLECTIONS).length > 0) {
 		const all_posts = await getAllPosts();
 
-		// Process cover images for all posts (downloads and optimizes them)
+		// Process cover and featured images for all posts (downloads and optimizes them)
 		await processCoverImages(all_posts);
+		await processFeaturedImages(all_posts);
 
 		for (const [collectionName, config] of Object.entries(HOMEPAGE_COLLECTIONS)) {
 				if (config.enabled) {

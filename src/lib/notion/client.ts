@@ -845,6 +845,68 @@ export async function processCoverImages(posts: Post[]) {
 	});
 }
 
+export async function processFeaturedImages(posts: Post[]) {
+	const results = await Promise.allSettled(
+		posts.flatMap(async (post) => {
+			if (!post.FeaturedImages || post.FeaturedImages.length === 0) {
+				return [];
+			}
+
+			// Process all featured images for this post
+			return Promise.all(
+				post.FeaturedImages.map(async (featuredImage, index) => {
+					// Only process 'file' type images (uploaded images that expire)
+					// 'external' type images are external URLs and don't need processing
+					if (featuredImage.Type !== 'file') {
+						return null;
+					}
+
+					let url = new URL(featuredImage.Url);
+					const cacheFilePath = generateFilePath(url, isConvImageType(url.pathname) && OPTIMIZE_IMAGES);
+
+					const shouldDownload = LAST_BUILD_TIME
+						? post.LastUpdatedTimeStamp > LAST_BUILD_TIME || !fs.existsSync(cacheFilePath)
+						: true;
+
+					if (shouldDownload) {
+						// Check if URL is expired (Notion file URLs expire after ~1 hour)
+						const urlParams = new URLSearchParams(url.search);
+						const expiryParam = urlParams.get('X-Amz-Expires');
+						const dateParam = urlParams.get('X-Amz-Date');
+
+						if (expiryParam && dateParam) {
+							const expirySeconds = parseInt(expiryParam);
+							const dateMs = new Date(dateParam.replace(/(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z/, '$1-$2-$3T$4:$5:$6Z')).getTime();
+							const expiryTime = dateMs + (expirySeconds * 1000);
+
+							if (expiryTime < Date.now()) {
+								// URL expired, need to refetch the post to get new URL
+								console.log(`Featured image ${index + 1} URL expired for post "${post.Title}", refetching...`);
+								const updatedPost = await getPostByPageId(post.PageId);
+								if (updatedPost && updatedPost.FeaturedImages && updatedPost.FeaturedImages[index]) {
+									url = new URL(updatedPost.FeaturedImages[index].Url);
+								}
+							}
+						}
+
+						console.log(`Downloading featured image ${index + 1} for "${post.Title}": ${url.pathname.split('/').slice(-2).join('/')}`);
+						return downloadFile(url); // Download and optimize the featured image
+					}
+
+					return null;
+				})
+			);
+		}),
+	);
+
+	// Log any failures
+	results.forEach((result, index) => {
+		if (result.status === 'rejected') {
+			console.error(`Failed to process featured image:`, result.reason);
+		}
+	});
+}
+
 export async function getDataSource(): Promise<Database> {
 	if (dsCache !== null) {
 		return Promise.resolve(dsCache);
