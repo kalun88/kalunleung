@@ -1471,6 +1471,13 @@ function _buildPost(pageObject: responses.PageObject): Post {
 				return {
 					Type: prop.FeaturedImage.type,
 					Url: file.file.url,
+					OptimizedUrl:
+						isConvImageType(file.file.url) && OPTIMIZE_IMAGES
+							? file.file.url.substring(
+									0,
+									file.file.url.lastIndexOf("."),
+								) + ".webp"
+							: file.file.url,
 					ExpiryTime: file.file.expiry_time,
 				};
 			}

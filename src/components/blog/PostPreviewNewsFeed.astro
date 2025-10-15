@@ -33,8 +33,9 @@ const images = post.FeaturedImages && post.FeaturedImages.length > 0
 		if (img.Type === 'external') {
 			return img.Url;
 		}
-		// For Notion uploaded files, use the local cached path
-		return filePath(new URL(img.Url));
+		// For Notion uploaded files, use the OptimizedUrl (webp) if available, otherwise original
+		const urlToUse = img.OptimizedUrl || img.Url;
+		return filePath(new URL(urlToUse));
 	})
 	: [];
 
