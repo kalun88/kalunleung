@@ -15,11 +15,42 @@
 
     #alphabet-soup-canvas {
         display: block;
-        cursor: crosshair;
+        cursor: none;
         width: 100%;
         height: 600px;
         background: transparent;
         touch-action: none;
+    }
+
+    /* Custom cursor overlay */
+    #custom-cursor {
+        position: fixed;
+        pointer-events: none;
+        z-index: 9999;
+        font-family: monospace;
+        font-size: 120px;
+        color: #39FF14;
+        opacity: 0.9;
+        transform: translate(-50%, -50%);
+        transition: opacity 0.2s ease, transform 0.1s ease;
+        display: none;
+    }
+
+    #custom-cursor.active {
+        display: block;
+    }
+
+    /* Cursor modes */
+    #custom-cursor.push-mode::before {
+        content: '◍';
+    }
+
+    #custom-cursor.paint-mode::before {
+        content: '▞';
+    }
+
+    #custom-cursor.erase-mode::before {
+        content: '▰';
     }
 
     /* Full-screen hero mode styles */
@@ -122,10 +153,70 @@
     body.alphabet-soup-hero.dark main {
         background: #1c1e20;
     }
+
+    /* Instructions overlay */
+    .alphabet-soup-instructions {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 10;
+        font-family: monospace;
+        font-size: 0.875rem;
+        color: rgb(203, 41, 65);
+        opacity: 0.6;
+        pointer-events: none;
+        line-height: 1.6;
+        text-align: center;
+        transition: opacity 0.5s ease;
+    }
+
+    .alphabet-soup-instructions.faded {
+        opacity: 0.3;
+    }
+
+    /* Hide mobile instructions on desktop */
+    .alphabet-soup-instructions .mobile-only {
+        display: none;
+    }
+
+    /* Show mobile instructions on mobile, hide desktop instructions */
+    @media (max-width: 768px) {
+        .alphabet-soup-instructions {
+            font-size: 0.75rem;
+        }
+
+        .alphabet-soup-instructions .desktop-only {
+            display: none;
+        }
+
+        .alphabet-soup-instructions .mobile-only {
+            display: block;
+        }
+    }
+
+    /* Hide instructions when scrolled in hero mode */
+    body.alphabet-soup-hero.scrolled .alphabet-soup-instructions {
+        opacity: 0;
+    }
 </style>
 
 <div id="alphabet-soup-wrapper">
     <canvas id="alphabet-soup-canvas"></canvas>
+
+    <!-- Custom cursor -->
+    <div id="custom-cursor" class="push-mode"></div>
+
+    <!-- Instructions overlay -->
+    <div class="alphabet-soup-instructions" id="alphabet-soup-instructions">
+        <div class="desktop-only">
+            click to commit<br>
+            hold space to erase
+        </div>
+        <div class="mobile-only">
+            hold to commit
+        </div>
+    </div>
 
     <!-- Scroll indicator (only shown in hero mode) -->
     <div class="scroll-indicator" id="scroll-indicator">
@@ -153,6 +244,7 @@
         cleanupFunctions = [];
 
         const ctx = canvas.getContext('2d');
+        const customCursor = document.getElementById('custom-cursor');
 
         // Set canvas dimensions
         function resizeCanvas() {
@@ -222,7 +314,7 @@
         let lastMouseX = 0;
         let lastMouseY = 0;
         let mouseSpeed = 0;
-        let isMouseDown = false;
+        let isPaintMode = false;
         let isEraseMode = false;
 
         // Get mouse position relative to canvas
@@ -301,6 +393,36 @@
                 this.y = y;
                 this.size = size;
                 this.symbol = symbol;
+                this.rotation = 0;
+                this.vx = 0;
+                this.vy = 0;
+                this.rotationVelocity = 0;
+                this.friction = 0.92;
+            }
+
+            update() {
+                // Apply velocity
+                this.x += this.vx;
+                this.y += this.vy;
+                this.rotation += this.rotationVelocity;
+
+                // Apply friction
+                this.vx *= this.friction;
+                this.vy *= this.friction;
+                this.rotationVelocity *= this.friction;
+
+                // Keep within bounds
+                const margin = 50;
+                if (this.x < margin) this.x = margin;
+                if (this.x > canvas.width - margin) this.x = canvas.width - margin;
+                if (this.y < margin) this.y = margin;
+                if (this.y > canvas.height - margin) this.y = canvas.height - margin;
+            }
+
+            applyForce(fx, fy, torque) {
+                this.vx += fx;
+                this.vy += fy;
+                this.rotationVelocity += torque;
             }
 
             draw() {
@@ -308,11 +430,13 @@
 
                 ctx.save();
                 ctx.globalAlpha = edgeFade;
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
                 ctx.fillStyle = color;
                 ctx.font = `${this.size}px monospace`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(this.symbol, this.x, this.y);
+                ctx.fillText(this.symbol, 0, 0);
                 ctx.restore();
             }
 
@@ -396,6 +520,49 @@
             }
         }
 
+        // Push permanent particles away from cursor with rotation
+        function pushParticles(x, y, speed) {
+            const pushRadius = 100;
+            const pushStrength = 0.5;
+            const rotationStrength = 0.02;
+
+            for (const particle of permanentParticles) {
+                const dist = particle.distanceTo(x, y);
+                if (dist < pushRadius && dist > 0) {
+                    // Calculate push direction (away from cursor)
+                    const dx = particle.x - x;
+                    const dy = particle.y - y;
+                    const angle = Math.atan2(dy, dx);
+
+                    // Force decreases with distance
+                    const forceMagnitude = (1 - dist / pushRadius) * pushStrength * (speed * 0.1 + 0.5);
+                    const fx = Math.cos(angle) * forceMagnitude;
+                    const fy = Math.sin(angle) * forceMagnitude;
+
+                    // Rotation based on perpendicular movement
+                    const perpAngle = angle + Math.PI / 2;
+                    const rotationDirection = Math.cos(perpAngle) * (lastMouseX - x) + Math.sin(perpAngle) * (lastMouseY - y);
+                    const torque = rotationDirection * rotationStrength * (1 - dist / pushRadius) * (speed * 0.01 + 0.5);
+
+                    particle.applyForce(fx, fy, torque);
+                }
+            }
+        }
+
+        // Update custom cursor position and mode
+        function updateCursor(clientX, clientY) {
+            if (customCursor) {
+                customCursor.style.left = clientX + 'px';
+                customCursor.style.top = clientY + 'px';
+            }
+        }
+
+        function setCursorMode(mode) {
+            if (customCursor) {
+                customCursor.className = 'active ' + mode + '-mode';
+            }
+        }
+
         // Mouse events
         const handleMouseMove = (e) => {
             const pos = getMousePos(e);
@@ -404,16 +571,21 @@
             mouseX = pos.x;
             mouseY = pos.y;
 
+            // Update custom cursor position
+            updateCursor(e.clientX, e.clientY);
+
             const dx = mouseX - lastMouseX;
             const dy = mouseY - lastMouseY;
             mouseSpeed = Math.sqrt(dx * dx + dy * dy);
 
             if (isEraseMode) {
                 eraseNearby(mouseX, mouseY);
-            } else if (isMouseDown) {
+            } else if (isPaintMode) {
                 createPermanentParticle(mouseX, mouseY, mouseSpeed);
             } else {
+                // Not in paint mode - show trail and push painted symbols
                 createParticles(mouseX, mouseY, mouseSpeed);
+                pushParticles(mouseX, mouseY, mouseSpeed);
             }
         };
 
@@ -421,33 +593,57 @@
             const pos = getMousePos(e);
             mouseX = pos.x;
             mouseY = pos.y;
-            isMouseDown = true;
+
+            // Toggle paint mode on click (unless in erase mode)
             if (!isEraseMode) {
-                createPermanentParticle(mouseX, mouseY, 0);
+                isPaintMode = !isPaintMode;
+                setCursorMode(isPaintMode ? 'paint' : 'push');
+
+                // Create initial particle when entering paint mode
+                if (isPaintMode) {
+                    createPermanentParticle(mouseX, mouseY, 0);
+                }
             }
         };
 
         const handleMouseUp = () => {
-            isMouseDown = false;
+            // No action needed for mouse up in toggle mode
         };
 
         const handleMouseLeave = () => {
-            isMouseDown = false;
+            // Keep paint mode active even when leaving canvas
+            // Hide custom cursor when leaving canvas
+            if (customCursor) {
+                customCursor.classList.remove('active');
+            }
+        };
+
+        const handleMouseEnter = (e) => {
+            // Show custom cursor when entering canvas
+            if (customCursor) {
+                customCursor.classList.add('active');
+                updateCursor(e.clientX, e.clientY);
+            }
         };
 
         canvas.addEventListener('mousemove', handleMouseMove);
+        canvas.addEventListener('mouseenter', handleMouseEnter);
         canvas.addEventListener('mousedown', handleMouseDown);
         canvas.addEventListener('mouseup', handleMouseUp);
         canvas.addEventListener('mouseleave', handleMouseLeave);
 
         cleanupFunctions.push(() => {
             canvas.removeEventListener('mousemove', handleMouseMove);
+            canvas.removeEventListener('mouseenter', handleMouseEnter);
             canvas.removeEventListener('mousedown', handleMouseDown);
             canvas.removeEventListener('mouseup', handleMouseUp);
             canvas.removeEventListener('mouseleave', handleMouseLeave);
         });
 
         // Touch events for mobile
+        let touchHoldTimer = null;
+        let isTouchPainting = false;
+
         const handleTouchMove = (e) => {
             e.preventDefault();
             const touch = e.touches[0];
@@ -461,10 +657,13 @@
             const dy = mouseY - lastMouseY;
             mouseSpeed = Math.sqrt(dx * dx + dy * dy);
 
-            if (isEraseMode) {
-                eraseNearby(mouseX, mouseY);
+            if (isTouchPainting) {
+                // Painting mode - leave permanent marks
+                createPermanentParticle(mouseX, mouseY, mouseSpeed);
             } else {
+                // Not painting - show trail and push symbols
                 createParticles(mouseX, mouseY, mouseSpeed);
+                pushParticles(mouseX, mouseY, mouseSpeed);
             }
         };
 
@@ -474,17 +673,42 @@
             const pos = getMousePos(touch);
             mouseX = pos.x;
             mouseY = pos.y;
-            if (!isEraseMode) {
+
+            // Start timer for hold detection (300ms to activate painting)
+            touchHoldTimer = setTimeout(() => {
+                isTouchPainting = true;
+                // Haptic feedback if available
+                if (navigator.vibrate) {
+                    navigator.vibrate(50);
+                }
                 createPermanentParticle(mouseX, mouseY, 0);
+            }, 300);
+        };
+
+        const handleTouchEnd = (e) => {
+            e.preventDefault();
+            // Clear hold timer if touch ends before hold duration
+            if (touchHoldTimer) {
+                clearTimeout(touchHoldTimer);
+                touchHoldTimer = null;
             }
+            // Exit painting mode
+            isTouchPainting = false;
         };
 
         canvas.addEventListener('touchmove', handleTouchMove);
         canvas.addEventListener('touchstart', handleTouchStart);
+        canvas.addEventListener('touchend', handleTouchEnd);
+        canvas.addEventListener('touchcancel', handleTouchEnd);
 
         cleanupFunctions.push(() => {
             canvas.removeEventListener('touchmove', handleTouchMove);
             canvas.removeEventListener('touchstart', handleTouchStart);
+            canvas.removeEventListener('touchend', handleTouchEnd);
+            canvas.removeEventListener('touchcancel', handleTouchEnd);
+            if (touchHoldTimer) {
+                clearTimeout(touchHoldTimer);
+            }
         });
 
         // Keyboard events for erase mode
@@ -492,14 +716,14 @@
             if (e.code === 'Space' && document.activeElement === document.body) {
                 e.preventDefault();
                 isEraseMode = true;
-                canvas.style.cursor = 'not-allowed';
+                setCursorMode('erase');
             }
         };
 
         const handleKeyUp = (e) => {
             if (e.code === 'Space') {
                 isEraseMode = false;
-                canvas.style.cursor = 'crosshair';
+                setCursorMode(isPaintMode ? 'paint' : 'push');
             }
         };
 
@@ -519,8 +743,9 @@
             // Draw grid background first
             drawGrid();
 
-            // Draw permanent particles (middle layer)
+            // Update and draw permanent particles (middle layer)
             for (const particle of permanentParticles) {
+                particle.update();
                 particle.draw();
             }
 
@@ -541,6 +766,20 @@
 
         // Start animation
         animate();
+
+        // Fade instructions after first interaction
+        const instructions = document.getElementById('alphabet-soup-instructions');
+        let hasInteracted = false;
+
+        function fadeInstructions() {
+            if (!hasInteracted) {
+                hasInteracted = true;
+                instructions?.classList.add('faded');
+            }
+        }
+
+        canvas.addEventListener('mousedown', fadeInstructions, { once: true });
+        canvas.addEventListener('touchstart', fadeInstructions, { once: true });
 
         // Hero mode: scroll indicator management and canvas fade
         if (document.body.classList.contains('alphabet-soup-hero')) {
