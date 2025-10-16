@@ -29,6 +29,20 @@ export interface Post {
 	BlueSkyPostLink: string | "";
 }
 
+export interface Gig {
+	PageId: string;
+	Title: string;
+	Date: string;
+	DateEnd?: string; // For residencies with date ranges
+	Venue: string;
+	With: string; // Band/ensemble name
+	Members: string; // Personnel list
+	EventLink: string;
+	City: string; // Format: "Toronto (CA)"
+	Residency: boolean;
+	LastUpdatedTimeStamp: Date;
+}
+
 export interface Block {
 	Id: string;
 	Type: BlockTypes;

@@ -18,7 +18,9 @@ import path from "path";
 import superjson from "superjson";
 
 export async function getStaticPaths() {
-	const posts = await getAllPosts();
+	const allPosts = await getAllPosts();
+	// Filter out "▇ dates" collection - now handled by separate gigs database
+	const posts = allPosts.filter((post) => post.Collection !== "▇ dates");
 	const allPostsMap: Record<string, Post> = Object.fromEntries(posts.map((p) => [p.PageId, p])); // Map of PageId to Post
 
 	return posts.map((post) => {

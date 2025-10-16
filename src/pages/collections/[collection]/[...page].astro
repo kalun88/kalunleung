@@ -7,7 +7,8 @@ import PostPreviewMedium from "@/components/blog/PostPreviewMedium.astro";
 import PostPreviewNewsFeed from "@/components/blog/PostPreviewNewsFeed.astro";
 import PostPreviewWide from "@/components/blog/PostPreviewWide.astro";
 import Pagination from "@/components/Paginator.astro";
-import { getAllPosts, getUniqueTags, getAllTagsWithCounts, processCoverImages, processFeaturedImages } from "@/lib/notion/client";
+import { getAllPosts, getUniqueTags, getAllTagsWithCounts, processCoverImages, processFeaturedImages, getAllGigs } from "@/lib/notion/client";
+import GigsView from "@/components/GigsView.astro";
 import type { Post, SelectProperty } from "@/lib/interfaces";
 import { getCollectionsWDesc, slugify } from "@/utils";
 import { getNotionColorToTailwindColor } from "@/lib/style-helpers";
@@ -25,11 +26,22 @@ export const getStaticPaths = (async ({ paginate }) => {
 		await processCoverImages(posts);
 		await processFeaturedImages(posts);
 
+		// Fetch gigs for the gigs collection
+		const gigs = await getAllGigs();
+
 		const collections = await getCollectionsWDesc();
 
 		const allTagsWithCounts = await getAllTagsWithCounts();
 
 		return collections.flatMap((collection) => {
+				// Special handling for gigs collection
+				if (collection.name === "▇ dates") {
+					return [{
+						params: { collection: slugify(collection.name), page: undefined },
+						props: { collection: collection.name, description: collection.description, uniqueTags: [], gigs, isGigsCollection: true },
+					}];
+				}
+
 				let collectionPosts = posts.filter((post) => post.Collection === collection.name);
 				collectionPosts.sort((a, b) => (a.Pinned === b.Pinned ? 0 : a.Pinned ? -1 : 1));
 				const uniqueTags = getUniqueTags(collectionPosts);
@@ -44,26 +56,28 @@ export const getStaticPaths = (async ({ paginate }) => {
 
 				return paginate(collectionPosts, {
 						params: { collection: slugify(collection.name) },
-						props: { collection: collection.name, description: collection.description, uniqueTags: uniqueTagsWithCounts },
+						props: { collection: collection.name, description: collection.description, uniqueTags: uniqueTagsWithCounts, isGigsCollection: false },
 						pageSize: NUMBER_OF_POSTS_PER_PAGE,
 				});
 		});
 }) satisfies GetStaticPaths;
 
 interface Props {
-		page: Page<Post>;
+		page?: Page<Post>;
 		collection: string;
 		description: string;
 		uniqueTags: (SelectProperty & { count: number })[];
+		gigs?: any[];
+		isGigsCollection?: boolean;
 }
 
-const { page, collection, description, uniqueTags } = Astro.props as Props;
+const { page, collection, description, uniqueTags, gigs, isGigsCollection } = Astro.props as Props;
 
-// Compute caching info for each post in page.data
-const allPosts = await getAllPosts();
+// Compute caching info for each post in page.data (skip for gigs collection)
+const allPosts = !isGigsCollection ? await getAllPosts() : [];
 const allPostsMap: Record<string, Post> = Object.fromEntries(allPosts.map(p => [p.PageId, p]));
 
-const postsWithCacheInfo = page.data.map(post => {
+const postsWithCacheInfo = page?.data.map(post => {
 		const referencesInPage = getReferencesInPage(post.PageId);
 		const linkedPageIdsSet = new Set<string>();
 
@@ -99,7 +113,7 @@ const postsWithCacheInfo = page.data.map(post => {
 		const shouldUseCache = postLastUpdatedBeforeLastBuild && !linkedPostsUpdated;
 
 		return { post, shouldUseCache, postLastUpdatedBeforeLastBuild };
-});
+}) || [];
 
 const meta = {
 		title: `${collection}`,
@@ -107,14 +121,14 @@ const meta = {
 		ogImage: "/og-image/collectionpage---" + collection + ".png",
 };
 
-const paginationProps = {
+const paginationProps = page ? {
 		...(page.url.prev && {
 				prevUrl: { url: getNavLink(page.url.prev), text: `← Previous Posts` },
 		}),
 		...(page.url.next && {
 				nextUrl: { url: getNavLink(page.url.next), text: `Next Posts →` },
 		}),
-};
+} : {};
 ---
 
 		<PageLayout meta={meta}>
@@ -123,6 +137,9 @@ const paginationProps = {
 			{description && <q class="block italic mb-6 -mt-3">{description}</q>}
 		</div>
 		{/* manual-edit: Updated grid layout to support medium previews and news feed with sidebar */}
+		{isGigsCollection && gigs ? (
+			<GigsView gigs={gigs} />
+		) : (
 		<div class="grid grid-cols-3 sm:grid-cols-4 gap-y-16 sm:ml-8 print:ml-0 max-w-none sm:max-w-[98vw] lg:max-w-[96vw] xl:max-w-[1500px] print:max-w-full sm:items-start sm:gap-x-8">
 				<section aria-label="Blog post list" class="col-span-3 print:col-span-full">
 							{/* News feed layout */}
@@ -230,6 +247,7 @@ const paginationProps = {
 					)
 				}
 		</div>
+		)}
 </PageLayout>
 {
 	FULL_PREVIEW_COLLECTIONS.includes(collection) && (
