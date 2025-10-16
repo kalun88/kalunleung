@@ -228,7 +228,15 @@ const cities = Object.entries(cityCounts).sort((a, b) => a[0].localeCompare(b[0]
 </style>
 
 <script is:inline>
-	document.addEventListener('DOMContentLoaded', () => {
+	(function() {
+		// Wait for DOM to be fully loaded
+		if (document.readyState === 'loading') {
+			document.addEventListener('DOMContentLoaded', initGigsFilters);
+		} else {
+			initGigsFilters();
+		}
+
+		function initGigsFilters() {
 		let currentYear = 'all';
 		let currentCity = 'all';
 		let residencyOnly = false;
@@ -298,5 +306,6 @@ const cities = Object.entries(cityCounts).sort((a, b) => a[0].localeCompare(b[0]
 			}
 			filterGigs();
 		});
-	});
+	}
+	})();
 </script>
