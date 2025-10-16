@@ -1,12 +1,12 @@
 import rss from "@astrojs/rss";
 // import { siteConfig } from "@/site-config";
-import { getAllPosts, getDataSource } from "@/lib/notion/client";
+import { getAllPosts } from "@/lib/notion/client";
 import { getPostLink } from "@/lib/blog-helpers";
 import { HIDE_UNDERSCORE_SLUGS_IN_LISTS, AUTHOR } from "@/constants";
 import { getNavLink } from "@/lib/blog-helpers";
 
 export const GET = async () => {
-	const [posts, database] = await Promise.all([getAllPosts(), getDataSource()]);
+	const posts = await getAllPosts();
 
 	// Filter posts if HIDE_UNDERSCORE_SLUGS_IN_LISTS is true
 	const filteredPosts = HIDE_UNDERSCORE_SLUGS_IN_LISTS
@@ -15,8 +15,8 @@ export const GET = async () => {
 
 	return rss({
 		stylesheet: getNavLink("/rss-styles.xsl"),
-		title: database.Title,
-		description: database.Description,
+		title: "",
+		description: "",
 		site: import.meta.env.SITE,
 		customData: `${AUTHOR ? `<author>${AUTHOR}</author>` : ""}
                 <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>`,

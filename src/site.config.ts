@@ -1,16 +1,9 @@
-import { getDataSource } from "@/lib/notion/client";
 // import { getNavLink, getSite } from "@/lib/blog-helpers";
 import type { SiteConfig } from "@/types";
 import { AUTHOR, WEBMENTION_LINK, HOME_PAGE_SLUG } from "@/constants";
 
-const tl = "",
-	ds = "",
-	path = "/",
-	oim = "";
-const database = await getDataSource();
-
-const siteTitle = tl ? `${tl} - ${database.Title}` : database.Title;
-const siteDescription = ds ? ds : database.Description;
+const siteTitle = "";
+const siteDescription = "";
 
 export const siteInfo: SiteConfig = {
 	title: siteTitle,
@@ -34,5 +27,5 @@ export const siteInfo: SiteConfig = {
 		// link: "https://webmention.io/astro-cactus.chriswilliams.dev/webmention",
 		// site: "https://astro-cactus.chriswilliams.dev/",
 	},
-	logo: database.Icon || null,
+	logo: null,
 };
