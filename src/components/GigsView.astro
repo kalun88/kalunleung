@@ -229,14 +229,9 @@ const cities = Object.entries(cityCounts).sort((a, b) => a[0].localeCompare(b[0]
 
 <script is:inline>
 	(function() {
-		// Wait for DOM to be fully loaded
-		if (document.readyState === 'loading') {
-			document.addEventListener('DOMContentLoaded', initGigsFilters);
-		} else {
-			initGigsFilters();
-		}
-
 		function initGigsFilters() {
+			console.log('Initializing gigs filters...');
+
 		let currentYear = 'all';
 		let currentCity = 'all';
 		let residencyOnly = false;
@@ -245,6 +240,13 @@ const cities = Object.entries(cityCounts).sort((a, b) => a[0].localeCompare(b[0]
 		const cityFilters = document.querySelectorAll('.city-filter');
 		const residencyToggle = document.getElementById('residency-toggle');
 		const gigsList = document.getElementById('gigs-list');
+
+		console.log('Found elements:', {
+			yearTabs: yearTabs.length,
+			cityFilters: cityFilters.length,
+			residencyToggle: !!residencyToggle,
+			gigsList: !!gigsList
+		});
 
 		function filterGigs() {
 			const allGigs = document.querySelectorAll('.gig-item');
@@ -307,5 +309,15 @@ const cities = Object.entries(cityCounts).sort((a, b) => a[0].localeCompare(b[0]
 			filterGigs();
 		});
 	}
+
+	// Initialize on both DOMContentLoaded and Astro page load
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', initGigsFilters);
+	} else {
+		initGigsFilters();
+	}
+
+	// Also reinitialize when Astro navigates to this page via view transitions
+	document.addEventListener('astro:page-load', initGigsFilters);
 	})();
 </script>
