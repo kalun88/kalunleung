@@ -1,0 +1,302 @@
+---
+import type { Gig } from "@/lib/interfaces";
+import FormattedDate from "@/components/FormattedDate.astro";
+
+interface Props {
+	gigs: Gig[];
+}
+
+const { gigs } = Astro.props;
+
+// Group gigs by year
+const gigsByYear = gigs.reduce((acc, gig) => {
+	const year = gig.Date ? new Date(gig.Date).getFullYear().toString() : "Unknown";
+	if (!acc[year]) acc[year] = [];
+	acc[year].push(gig);
+	return acc;
+}, {} as Record<string, Gig[]>);
+
+const years = Object.keys(gigsByYear).sort((a, b) => parseInt(b) - parseInt(a));
+
+// Get unique cities with counts
+const cityCounts = gigs.reduce((acc, gig) => {
+	if (gig.City) {
+		acc[gig.City] = (acc[gig.City] || 0) + 1;
+	}
+	return acc;
+}, {} as Record<string, number>);
+
+const cities = Object.entries(cityCounts).sort((a, b) => a[0].localeCompare(b[0]));
+---
+
+<div class="gigs-container max-w-none sm:max-w-[98vw] lg:max-w-[96vw] xl:max-w-[1500px] sm:ml-8 print:ml-0 print:max-w-full">
+	<div class="grid grid-cols-3 sm:grid-cols-4 gap-8 items-start sm:gap-x-8">
+		<!-- Main gigs list -->
+		<section class="col-span-3">
+			<!-- Filter tabs -->
+			<div class="mb-6 flex flex-wrap gap-3 items-center">
+				<div class="year-tabs flex flex-wrap gap-2">
+					<button class="year-tab active font-mono text-sm px-3 py-1 transition-colors" data-year="all">
+						All
+					</button>
+					{years.map(year => (
+						<button class="year-tab font-mono text-sm px-3 py-1 transition-colors" data-year={year}>
+							{year}
+						</button>
+					))}
+				</div>
+				<button id="residency-toggle" class="font-mono text-sm px-3 py-1 border transition-colors">
+					Residencies Only
+				</button>
+			</div>
+
+			<!-- Gigs list -->
+			<div id="gigs-list" class="space-y-0">
+				{years.map(year => (
+					<div class="year-group" data-year={year}>
+						{gigsByYear[year].map(gig => {
+							const gigDate = gig.Date ? new Date(gig.Date + 'T00:00:00') : null;
+							const gigDateEnd = gig.DateEnd ? new Date(gig.DateEnd + 'T00:00:00') : null;
+
+							return (
+								<article
+									class={`gig-item border-b border-slate-200 dark:border-slate-700 py-3 px-2 transition-all duration-200 ${gig.Residency ? 'is-residency' : ''}`}
+									data-city={gig.City}
+									data-residency={gig.Residency}
+								>
+									<div class="flex items-start gap-4 gig-main-row">
+										<!-- Date column -->
+										<div class="flex-shrink-0 w-32 font-mono text-sm text-gray-500 dark:text-gray-400">
+											{gig.Residency && gigDate && gigDateEnd ? (
+												<div class="flex flex-col items-start leading-tight">
+													<FormattedDate date={gigDate} class="whitespace-nowrap" />
+													<span class="text-center w-full">⋮</span>
+													<FormattedDate date={gigDateEnd} class="whitespace-nowrap" />
+												</div>
+											) : gigDate && (
+												<FormattedDate date={gigDate} class="whitespace-nowrap" />
+											)}
+										</div>
+
+										<!-- Title and Venue -->
+										<div class="flex-grow min-w-0">
+											<h3 class="text-base font-semibold text-slate-900 dark:text-slate-100">
+												{gig.Title}
+												{gig.Venue && (
+													<>
+														<span class="text-red-600 dark:text-red-400 mx-2">▼</span>
+														<span class="font-normal text-slate-700 dark:text-slate-300">{gig.Venue}</span>
+													</>
+												)}
+											</h3>
+										</div>
+
+										<!-- Right side: Ensemble and Location (rightmost) -->
+										<div class="flex-shrink-0 flex items-center gap-3 text-sm">
+											{gig.With && (
+												<span class="text-slate-600 dark:text-slate-400">
+													<span class="text-slate-400 dark:text-slate-500">with </span>{gig.With}
+												</span>
+											)}
+											{gig.City && (
+												<span class="font-mono text-slate-600 dark:text-slate-400">{gig.City}</span>
+											)}
+										</div>
+									</div>
+
+									<!-- Expandable hover content -->
+									{(gig.EventLink || gig.Members) && (
+										<div class="gig-expanded mt-2 pl-36 opacity-0 overflow-hidden transition-all duration-200" style="max-height: 0;">
+											<div class="flex justify-between items-start text-sm gap-4">
+												{gig.EventLink && (
+													<a
+														href={gig.EventLink}
+														target="_blank"
+														rel="noopener noreferrer"
+														class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline flex-shrink-0"
+													>
+														{gig.EventLink}
+													</a>
+												)}
+												{gig.Members && (
+													<span class="text-slate-600 dark:text-slate-400 text-right ml-auto">{gig.Members}</span>
+												)}
+											</div>
+										</div>
+									)}
+								</article>
+							);
+						})}
+					</div>
+				))}
+			</div>
+		</section>
+
+		<!-- Sidebar: City filters -->
+		{cities.length > 0 && (
+			<aside class="col-span-3 sm:col-span-1">
+				<h2 class="mb-3 text-sm font-semibold text-accent-2 dark:text-accent-2">Cities</h2>
+				<ul class="flex flex-col gap-1 font-mono text-xs">
+					<li>
+						<button class="city-filter active transition-opacity hover:opacity-80" data-city="all">
+							[All]
+						</button>
+					</li>
+					{cities.map(([city, count]) => (
+						<li class="flex items-center">
+							<button class="city-filter transition-opacity hover:opacity-80" data-city={city}>
+								[{city}]
+							</button>
+							<span class="ml-1 text-[10px] text-gray-500">{count}</span>
+						</li>
+					))}
+				</ul>
+			</aside>
+		)}
+	</div>
+</div>
+
+<style>
+	.year-tab {
+		background: transparent;
+		color: rgb(71 85 105);
+		border: 1px solid transparent;
+		border-radius: 0;
+	}
+
+	.year-tab.active {
+		background: rgb(203 41 65);
+		color: white;
+		border-color: rgb(203 41 65);
+	}
+
+	.year-tab:hover:not(.active) {
+		border-color: rgb(203 41 65);
+	}
+
+	#residency-toggle {
+		background: transparent;
+		color: rgb(71 85 105);
+		border-color: rgb(203 213 225);
+		border-radius: 0;
+	}
+
+	#residency-toggle.active {
+		background: rgb(203 41 65);
+		color: white;
+		border-color: rgb(203 41 65);
+	}
+
+	.city-filter {
+		color: rgb(71 85 105);
+	}
+
+	.city-filter.active {
+		color: rgb(203 41 65);
+		font-weight: 600;
+	}
+
+	.gig-item:hover .gig-expanded {
+		max-height: 100px !important;
+		opacity: 1;
+	}
+
+	.gig-item:hover {
+		background-color: rgb(249 250 251);
+	}
+
+	:global(.dark) .gig-item:hover {
+		background-color: rgb(30 41 59);
+	}
+
+	.gig-item.filtered-out {
+		opacity: 0;
+		max-height: 0;
+		padding: 0;
+		margin: 0;
+		border: none;
+		transform: translateY(-10px);
+	}
+
+	.year-group {
+		transition: opacity 200ms ease, transform 200ms ease;
+	}
+
+	.year-group.hidden {
+		display: none;
+	}
+</style>
+
+<script is:inline>
+	document.addEventListener('DOMContentLoaded', () => {
+		let currentYear = 'all';
+		let currentCity = 'all';
+		let residencyOnly = false;
+
+		const yearTabs = document.querySelectorAll('.year-tab');
+		const cityFilters = document.querySelectorAll('.city-filter');
+		const residencyToggle = document.getElementById('residency-toggle');
+		const gigsList = document.getElementById('gigs-list');
+
+		function filterGigs() {
+			const allGigs = document.querySelectorAll('.gig-item');
+			const yearGroups = document.querySelectorAll('.year-group');
+
+			// Hide/show year groups
+			yearGroups.forEach(group => {
+				const groupYear = group.getAttribute('data-year');
+				if (currentYear === 'all' || currentYear === groupYear) {
+					group.classList.remove('hidden');
+				} else {
+					group.classList.add('hidden');
+				}
+			});
+
+			// Filter individual gigs
+			allGigs.forEach(gig => {
+				const gigCity = gig.getAttribute('data-city');
+				const isResidency = gig.getAttribute('data-residency') === 'true';
+
+				const cityMatch = currentCity === 'all' || gigCity === currentCity;
+				const residencyMatch = !residencyOnly || isResidency;
+
+				if (cityMatch && residencyMatch) {
+					gig.classList.remove('filtered-out');
+				} else {
+					gig.classList.add('filtered-out');
+				}
+			});
+		}
+
+		// Year tabs
+		yearTabs.forEach(tab => {
+			tab.addEventListener('click', () => {
+				yearTabs.forEach(t => t.classList.remove('active'));
+				tab.classList.add('active');
+				currentYear = tab.getAttribute('data-year');
+				filterGigs();
+			});
+		});
+
+		// City filters
+		cityFilters.forEach(filter => {
+			filter.addEventListener('click', () => {
+				cityFilters.forEach(f => f.classList.remove('active'));
+				filter.classList.add('active');
+				currentCity = filter.getAttribute('data-city');
+				filterGigs();
+			});
+		});
+
+		// Residency toggle
+		residencyToggle?.addEventListener('click', () => {
+			residencyOnly = !residencyOnly;
+			if (residencyOnly) {
+				residencyToggle.classList.add('active');
+			} else {
+				residencyToggle.classList.remove('active');
+			}
+			filterGigs();
+		});
+	});
+</script>

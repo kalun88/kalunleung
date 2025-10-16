@@ -10,6 +10,7 @@ import {
 	NOTION_API_SECRET,
 	DATABASE_ID,
 	DATA_SOURCE_ID,
+	GIGS_DATABASE_ID,
 	MENU_PAGES_COLLECTION,
 	OPTIMIZE_IMAGES,
 	LAST_BUILD_TIME,
@@ -21,6 +22,7 @@ import type * as requestParams from "@/lib/notion/request-params";
 import type {
 	Database,
 	Post,
+	Gig,
 	Block,
 	Paragraph,
 	Heading1,
@@ -1666,4 +1668,141 @@ function _buildRichText(richTextObject: responses.RichTextObject): RichText {
 	}
 
 	return richText;
+}
+
+// Fetch gigs from the separate gigs database
+export async function getAllGigs(): Promise<Gig[]> {
+	if (!GIGS_DATABASE_ID) {
+		console.warn("GIGS_DATABASE_ID not configured");
+		return [];
+	}
+
+	// Get the data source ID from the database ID
+	let gigsDataSourceId: string;
+	try {
+		console.log(`Fetching data source for gigs database: ${GIGS_DATABASE_ID}`);
+		const response = await retry(
+			async (bail) => {
+				try {
+					return (await client.databases.retrieve({
+						database_id: GIGS_DATABASE_ID,
+					})) as any;
+				} catch (error: unknown) {
+					if (error instanceof APIResponseError) {
+						if (error.status && error.status >= 400 && error.status < 500) {
+							bail(error);
+						}
+					}
+					throw error;
+				}
+			},
+			{
+				retries: numberOfRetry,
+				minTimeout: minTimeout,
+				factor: factor,
+			},
+		);
+
+		const dataSources = response.data_sources;
+		if (!dataSources || dataSources.length === 0) {
+			throw new Error(`No data sources found for gigs database ID: ${GIGS_DATABASE_ID}`);
+		}
+
+		gigsDataSourceId = dataSources[0].id;
+		console.log(`Using gigs data source: ${gigsDataSourceId}`);
+	} catch (error: unknown) {
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		console.error("Error fetching gigs database. Make sure the database is shared with your integration:", errorMessage);
+		return [];
+	}
+
+	const params: any = {
+		data_source_id: gigsDataSourceId,
+		filter: {
+			property: "Published",
+			checkbox: {
+				equals: true,
+			},
+		},
+		sorts: [
+			{
+				property: "Date",
+				direction: "descending",
+			},
+		],
+		page_size: 100,
+	};
+
+	let results: responses.PageObject[] = [];
+
+	try {
+		while (true) {
+			const res = await retry(
+				async (bail) => {
+					try {
+						return (await client.dataSources.query(params as any)) as responses.QueryDatabaseResponse;
+					} catch (error: unknown) {
+						if (error instanceof APIResponseError) {
+							if (error.status && error.status >= 400 && error.status < 500) {
+								bail(error);
+							}
+						}
+						throw error;
+					}
+				},
+				{
+					retries: numberOfRetry,
+					minTimeout: minTimeout,
+					factor: factor,
+				},
+			);
+
+			results = results.concat(res.results);
+
+			if (!res.has_more) {
+				break;
+			}
+
+			params["start_cursor"] = res.next_cursor as string;
+		}
+
+		const gigs = results.map((pageObject) => _buildGig(pageObject));
+		console.log(`✅ Fetched ${gigs.length} gigs from database`);
+		return gigs;
+	} catch (error: unknown) {
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		console.error("Error fetching gigs database. Make sure the database is shared with your integration:", errorMessage);
+		return [];
+	}
+}
+
+function _buildGig(pageObject: responses.PageObject): Gig {
+	const prop = pageObject.properties;
+
+	let dateStart = "";
+	let dateEnd = "";
+	if (prop.Date?.date) {
+		dateStart = prop.Date.date.start || "";
+		dateEnd = prop.Date.date.end || "";
+	}
+
+	// Location is a multi_select property (tags)
+	let locationStr = "";
+	if (prop.Location?.multi_select && prop.Location.multi_select.length > 0) {
+		locationStr = prop.Location.multi_select[0]?.name || "";
+	}
+
+	return {
+		PageId: pageObject.id,
+		Title: prop.Title?.title ? prop.Title.title.map((richText) => richText.plain_text).join("") : "",
+		Date: dateStart,
+		DateEnd: dateEnd,
+		Venue: prop.Venue?.rich_text ? prop.Venue.rich_text.map((richText) => richText.plain_text).join("") : "",
+		With: prop.Ensemble?.rich_text ? prop.Ensemble.rich_text.map((richText) => richText.plain_text).join("") : "",
+		Members: prop.Personnel?.rich_text ? prop.Personnel.rich_text.map((richText) => richText.plain_text).join("") : "",
+		EventLink: prop.URL?.url || "",
+		City: locationStr,
+		Residency: prop.Residency?.checkbox || false,
+		LastUpdatedTimeStamp: pageObject.last_edited_time ? new Date(pageObject.last_edited_time) : new Date(),
+	};
 }
