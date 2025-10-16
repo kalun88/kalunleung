@@ -90,6 +90,9 @@ jobs:
           path: ./constants-config.json
           key: constants-config-${{ hashFiles(format('{0}/constants-config.json', env.BUILD_PATH)) }}
 
+      - name: Ensure tmp directory exists
+        run: mkdir -p tmp
+
       - name: Process constants-config if cache not hit
         if: steps.restore-constants-config.outputs.cache-hit != 'true'
         run: |
