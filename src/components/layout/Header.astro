@@ -133,37 +133,50 @@ const rss_path = getNavLink("/rss.xml");
 
 <script>
 	class MobileNavBtn extends HTMLElement {
-		constructor() {
-			super();
+		private isInitialized = false;
+		private toggleMobileMenu: (() => void) | null = null;
+
+		connectedCallback() {
+			// Avoid double initialization
+			if (this.isInitialized) return;
+			this.isInitialized = true;
 
 			const mobileButtonEl = document.getElementById("toggle-navigation-menu");
+			if (!mobileButtonEl) return;
+
 			let menuOpen = false;
 
-			function toggleMobileMenu() {
-				const headerEl = document.getElementById("main-header")!;
+			this.toggleMobileMenu = () => {
+				const headerEl = document.getElementById("main-header");
+				if (!headerEl) return;
 				headerEl.classList.toggle("menu-open");
 				menuOpen = !menuOpen;
 				mobileButtonEl.setAttribute("aria-expanded", menuOpen.toString());
-			}
+			};
 
-			mobileButtonEl.addEventListener("click", () => toggleMobileMenu());
+			mobileButtonEl.addEventListener("click", this.toggleMobileMenu);
+		}
+
+		disconnectedCallback() {
+			this.isInitialized = false;
 		}
 	}
 
 	customElements.define("mobile-button", MobileNavBtn);
 
-	document.addEventListener("DOMContentLoaded", function () {
-		var toggleButton = document.getElementById("toggle-navigation-menu");
+	function setupClickOutside() {
+		const toggleButton = document.getElementById("toggle-navigation-menu");
+		if (!toggleButton) return;
 
-		document.addEventListener("click", function (event) {
-			var navMenu = document.getElementById("navigation-menu");
-			var mainHeader = document.getElementById("main-header");
+		const clickHandler = (event: Event) => {
+			const navMenu = document.getElementById("navigation-menu");
+			const mainHeader = document.getElementById("main-header");
 
 			// Check if the click is on the toggle button or a descendant of it
-			var isClickInsideToggleButton = toggleButton.contains(event.target);
+			const isClickInsideToggleButton = toggleButton.contains(event.target as Node);
 
 			if (!isClickInsideToggleButton && event.target instanceof Node) {
-				var isClickInsideNav = navMenu.contains(event.target);
+				const isClickInsideNav = navMenu?.contains(event.target);
 
 				if (!isClickInsideNav && mainHeader) {
 					// If the click is outside the navMenu and mainHeader exists, remove 'menu-open' attribute
@@ -171,6 +184,14 @@ const rss_path = getNavLink("/rss.xml");
 					toggleButton.setAttribute("aria-expanded", "false");
 				}
 			}
-		});
-	});
+		};
+
+		document.addEventListener("click", clickHandler);
+	}
+
+	// Run on initial page load
+	document.addEventListener("DOMContentLoaded", setupClickOutside);
+
+	// Run after each View Transition
+	document.addEventListener("astro:page-load", setupClickOutside);
 </script>

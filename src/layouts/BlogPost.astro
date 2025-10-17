@@ -43,7 +43,8 @@ const articleDate = new Date(post.Date).toISOString();
 				{REFERENCES && <ReferencesSection post={post} shouldUseCache={shouldUseCache} />}
 			</div>
 		</article>
-		{!!headings.length && <TOC headings={headings} />}
+		{/* Table of Contents disabled - uncomment line below to re-enable */}
+		{/* {!!headings.length && <TOC headings={headings} />} */}
 	</div>
 	<div class="max-w-none sm:max-w-[90vw] lg:max-w-[85vw] xl:max-w-[1100px] sm:mr-20 print:hidden">
 		<aside class="" data-pagefind-ignore="all">
