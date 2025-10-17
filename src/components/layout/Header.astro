@@ -67,7 +67,7 @@ const rss_path = getNavLink("/rss.xml");
 		</a>
 		<nav
 			id="navigation-menu"
-			class="md bg-bgColor/90 text-accent absolute -inset-x-4 top-16 hidden flex-col items-end rounded-md py-3 text-lg shadow-sm backdrop-blur-sm group-[.menu-open]:z-50 group-[.menu-open]:flex sm:static sm:z-auto sm:-ms-4 sm:mt-2 sm:flex sm:flex-row sm:items-center sm:rounded-none sm:py-0 sm:text-base sm:shadow-none sm:backdrop-blur-none lg:text-lg print:hidden"
+			class="md bg-bgColor/90 text-accent absolute -inset-x-4 top-16 hidden flex-col items-end rounded-md py-3 text-lg shadow-sm backdrop-blur-sm group-[.menu-open]:z-50 group-[.menu-open]:!flex sm:static sm:z-auto sm:-ms-4 sm:mt-2 sm:flex sm:flex-row sm:items-center sm:rounded-none sm:py-0 sm:text-base sm:shadow-none sm:backdrop-blur-none lg:text-lg print:hidden"
 			aria-label="Main menu"
 		>
 			{
@@ -104,94 +104,57 @@ const rss_path = getNavLink("/rss.xml");
 		<div class="hidden">
 			<ThemeIcon />
 		</div>
-		<mobile-button class="flex items-center">
-			<button
-				id="toggle-navigation-menu"
-				class="group relative ms-4 h-7 w-7 cursor-pointer sm:invisible sm:hidden"
-				type="button"
-				aria-label="Open main menu"
-				aria-expanded="false"
-				aria-haspopup="menu"
-			>
-				<Icon
-					name={"menu"}
-					class="absolute start-1/2 top-1/2 h-full w-full -translate-x-1/2 -translate-y-1/2 transition-all group-aria-expanded:scale-0 group-aria-expanded:opacity-0"
-					aria-hidden="true"
-					focusable="false"
-				/>
+		<button
+			id="toggle-navigation-menu"
+			class="group relative z-50 ms-4 h-10 w-10 cursor-pointer sm:invisible sm:hidden p-1.5"
+			type="button"
+			aria-label="Open main menu"
+			aria-expanded="false"
+			aria-haspopup="menu"
+		>
+			<Icon
+				name={"menu"}
+				class="absolute start-1/2 top-1/2 h-full w-full -translate-x-1/2 -translate-y-1/2 transition-all group-aria-expanded:scale-0 group-aria-expanded:opacity-0"
+				aria-hidden="true"
+				focusable="false"
+			/>
 
-				<Icon
-					name={"close"}
-					class="text-accent absolute start-1/2 top-1/2 h-full w-full -translate-x-1/2 -translate-y-1/2 scale-0 opacity-0 transition-all group-aria-expanded:scale-100 group-aria-expanded:opacity-100"
-					aria-hidden="true"
-					focusable="false"
-				/>
-			</button>
-		</mobile-button>
+			<Icon
+				name={"close"}
+				class="text-accent absolute start-1/2 top-1/2 h-full w-full -translate-x-1/2 -translate-y-1/2 scale-0 opacity-0 transition-all group-aria-expanded:scale-100 group-aria-expanded:opacity-100"
+				aria-hidden="true"
+				focusable="false"
+			/>
+		</button>
 	</div>
 </header>
 
-<script>
-	class MobileNavBtn extends HTMLElement {
-		private isInitialized = false;
-		private toggleMobileMenu: (() => void) | null = null;
+<script is:inline>
+	function initMenu() {
+		const btn = document.getElementById("toggle-navigation-menu");
+		const header = document.getElementById("main-header");
 
-		connectedCallback() {
-			// Avoid double initialization
-			if (this.isInitialized) return;
-			this.isInitialized = true;
+		if (!btn || !header) return;
 
-			const mobileButtonEl = document.getElementById("toggle-navigation-menu");
-			if (!mobileButtonEl) return;
-
-			let menuOpen = false;
-
-			this.toggleMobileMenu = () => {
-				const headerEl = document.getElementById("main-header");
-				if (!headerEl) return;
-				headerEl.classList.toggle("menu-open");
-				menuOpen = !menuOpen;
-				mobileButtonEl.setAttribute("aria-expanded", menuOpen.toString());
-			};
-
-			mobileButtonEl.addEventListener("click", this.toggleMobileMenu);
-		}
-
-		disconnectedCallback() {
-			this.isInitialized = false;
-		}
-	}
-
-	customElements.define("mobile-button", MobileNavBtn);
-
-	function setupClickOutside() {
-		const toggleButton = document.getElementById("toggle-navigation-menu");
-		if (!toggleButton) return;
-
-		const clickHandler = (event: Event) => {
-			const navMenu = document.getElementById("navigation-menu");
-			const mainHeader = document.getElementById("main-header");
-
-			// Check if the click is on the toggle button or a descendant of it
-			const isClickInsideToggleButton = toggleButton.contains(event.target as Node);
-
-			if (!isClickInsideToggleButton && event.target instanceof Node) {
-				const isClickInsideNav = navMenu?.contains(event.target);
-
-				if (!isClickInsideNav && mainHeader) {
-					// If the click is outside the navMenu and mainHeader exists, remove 'menu-open' attribute
-					mainHeader.classList.remove("menu-open");
-					toggleButton.setAttribute("aria-expanded", "false");
-				}
-			}
+		btn.onclick = function(e) {
+			e.stopPropagation();
+			const isOpen = header.classList.contains("menu-open");
+			header.classList.toggle("menu-open");
+			btn.setAttribute("aria-expanded", (!isOpen).toString());
 		};
 
-		document.addEventListener("click", clickHandler);
+		document.onclick = function(e) {
+			const nav = document.getElementById("navigation-menu");
+			if (!btn.contains(e.target) && !nav.contains(e.target)) {
+				header.classList.remove("menu-open");
+				btn.setAttribute("aria-expanded", "false");
+			}
+		};
 	}
 
-	// Run on initial page load
-	document.addEventListener("DOMContentLoaded", setupClickOutside);
+	// Run on load
+	initMenu();
 
-	// Run after each View Transition
-	document.addEventListener("astro:page-load", setupClickOutside);
+	// Run after View Transitions
+	document.addEventListener("astro:page-load", initMenu);
 </script>
