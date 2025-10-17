@@ -93,7 +93,7 @@ const cities = Object.entries(cityCounts).sort((a, b) => a[0].localeCompare(b[0]
 
 										<!-- Right side: Ensemble and Location (rightmost) -->
 										<div class="flex-shrink-0 flex flex-wrap items-center gap-2 sm:gap-3 text-sm w-full sm:w-auto">
-											{gig.With && (
+											{gig.With && gig.With.trim() !== '' && (
 												<span class="text-slate-600 dark:text-slate-400">
 													<span class="text-slate-400 dark:text-slate-500">with </span>{gig.With}
 												</span>
