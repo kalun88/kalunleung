@@ -72,15 +72,21 @@
     /* Scroll indicator */
     .scroll-indicator {
         position: fixed;
-        bottom: 2rem;
+        bottom: 3rem;
         left: 50%;
         transform: translateX(-50%);
         z-index: 10;
-        opacity: 0.6;
-        transition: opacity 0.3s ease;
-        animation: bounce 2s infinite;
+        opacity: 0.8;
+        transition: opacity 0.3s ease, transform 0.3s ease;
+        animation: bounce 2s infinite ease-in-out;
         display: none;
-        color: currentColor;
+        color: rgb(203, 41, 65);
+        cursor: pointer;
+        padding: 1rem;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
     }
 
     body.alphabet-soup-hero .scroll-indicator {
@@ -89,6 +95,7 @@
 
     .scroll-indicator:hover {
         opacity: 1;
+        transform: translateX(-50%) scale(1.1);
     }
 
     @keyframes bounce {
@@ -96,10 +103,10 @@
             transform: translateX(-50%) translateY(0);
         }
         40% {
-            transform: translateX(-50%) translateY(-10px);
+            transform: translateX(-50%) translateY(-15px);
         }
         60% {
-            transform: translateX(-50%) translateY(-5px);
+            transform: translateX(-50%) translateY(-8px);
         }
     }
 
@@ -180,18 +187,10 @@
         display: none;
     }
 
-    /* Show mobile instructions on mobile, hide desktop instructions */
+    /* Hide instructions completely on mobile */
     @media (max-width: 768px) {
         .alphabet-soup-instructions {
-            font-size: 0.75rem;
-        }
-
-        .alphabet-soup-instructions .desktop-only {
-            display: none;
-        }
-
-        .alphabet-soup-instructions .mobile-only {
-            display: block;
+            display: none !important;
         }
     }
 
@@ -220,7 +219,7 @@
 
     <!-- Scroll indicator (only shown in hero mode) -->
     <div class="scroll-indicator" id="scroll-indicator">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="6 9 12 15 18 9"></polyline>
         </svg>
     </div>
