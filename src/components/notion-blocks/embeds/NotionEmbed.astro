@@ -7,10 +7,10 @@ export interface Props {
 const { url, caption } = Astro.props;
 ---
 
-<div class="h-[700px] overflow-hidden sm:h-[700px]">
+<div class="h-auto overflow-hidden sm:h-[700px]">
 	<iframe
 		allowtransparency="true"
-		class="lazyload h-[875px] w-[125%] max-w-[125%] origin-top-left scale-[0.8] transform rounded-lg border-none sm:h-[700px] sm:w-full sm:max-w-full sm:scale-none sm:transform-none"
+		class="lazyload h-[500px] w-full max-w-full rounded-lg border-none sm:h-[700px]"
 		loading="lazy"
 		data-src={url.toString()}
 		title={caption}></iframe>

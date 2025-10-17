@@ -29,10 +29,10 @@ const cityCounts = gigs.reduce((acc, gig) => {
 const cities = Object.entries(cityCounts).sort((a, b) => a[0].localeCompare(b[0]));
 ---
 
-<div class="gigs-container max-w-none sm:max-w-[98vw] lg:max-w-[96vw] xl:max-w-[1500px] sm:ml-8 print:ml-0 print:max-w-full">
-	<div class="grid grid-cols-3 sm:grid-cols-4 gap-8 items-start sm:gap-x-8">
+<div class="gigs-container max-w-none sm:max-w-[98vw] lg:max-w-[96vw] xl:max-w-[1500px] ml-0 sm:ml-8 print:ml-0 print:max-w-full">
+	<div class="grid grid-cols-1 sm:grid-cols-4 gap-4 sm:gap-8 items-start">
 		<!-- Main gigs list -->
-		<section class="col-span-3">
+		<section class="col-span-1 sm:col-span-3">
 			<!-- Filter tabs -->
 			<div class="mb-6 flex flex-wrap gap-3 items-center">
 				<div class="year-tabs flex flex-wrap gap-2">
@@ -64,9 +64,9 @@ const cities = Object.entries(cityCounts).sort((a, b) => a[0].localeCompare(b[0]
 									data-city={gig.City}
 									data-residency={gig.Residency}
 								>
-									<div class="flex items-start gap-4 gig-main-row">
+									<div class="flex flex-col sm:flex-row items-start gap-2 sm:gap-4 gig-main-row">
 										<!-- Date column -->
-										<div class="flex-shrink-0 w-32 font-mono text-sm text-gray-500 dark:text-gray-400">
+										<div class="flex-shrink-0 w-full sm:w-32 font-mono text-sm text-gray-500 dark:text-gray-400">
 											{gig.Residency && gigDate && gigDateEnd ? (
 												<div class="flex flex-col items-start leading-tight">
 													<FormattedDate date={gigDate} class="whitespace-nowrap" />
@@ -92,7 +92,7 @@ const cities = Object.entries(cityCounts).sort((a, b) => a[0].localeCompare(b[0]
 										</div>
 
 										<!-- Right side: Ensemble and Location (rightmost) -->
-										<div class="flex-shrink-0 flex items-center gap-3 text-sm">
+										<div class="flex-shrink-0 flex flex-wrap items-center gap-2 sm:gap-3 text-sm w-full sm:w-auto">
 											{gig.With && (
 												<span class="text-slate-600 dark:text-slate-400">
 													<span class="text-slate-400 dark:text-slate-500">with </span>{gig.With}
@@ -106,7 +106,7 @@ const cities = Object.entries(cityCounts).sort((a, b) => a[0].localeCompare(b[0]
 
 									<!-- Expandable hover content -->
 									{(gig.EventLink || gig.Members) && (
-										<div class="gig-expanded mt-2 pl-36 opacity-0 overflow-hidden transition-all duration-200" style="max-height: 0;">
+										<div class="gig-expanded mt-2 pl-0 sm:pl-36 opacity-0 overflow-hidden transition-all duration-200" style="max-height: 0;">
 											<div class="flex justify-between items-start text-sm gap-4">
 												{gig.EventLink && (
 													<a
@@ -134,7 +134,7 @@ const cities = Object.entries(cityCounts).sort((a, b) => a[0].localeCompare(b[0]
 
 		<!-- Sidebar: City filters -->
 		{cities.length > 0 && (
-			<aside class="col-span-3 sm:col-span-1">
+			<aside class="col-span-1 sm:col-span-1">
 				<h2 class="mb-3 text-sm font-semibold text-accent-2 dark:text-accent-2">Cities</h2>
 				<ul class="flex flex-col gap-1 font-mono text-xs">
 					<li>

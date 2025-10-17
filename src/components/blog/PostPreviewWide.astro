@@ -129,11 +129,11 @@ const img3ZIndex = 3;
 		</div>
 
 		<!-- Column 3: Cover image(s) - artistic overlapping layout for 2-3 images -->
-		<div class="flex gap-2 items-center justify-end min-w-[200px] flex-wrap">
+		<div class="flex gap-2 items-center justify-center md:justify-end w-full md:min-w-[200px] flex-wrap">
 			{selectedImages.length > 0 ? (
 				selectedImages.length === 3 ? (
 					<!-- 3 images: artistic overlapping collage -->
-					<div class="relative flex items-center justify-center" style="width: 180px; height: 120px;">
+					<div class="relative flex items-center justify-center w-[180px] h-[120px]">
 						<!-- Image 1 -->
 						<div
 							class="absolute overflow-hidden shadow-md transition-all duration-300 hover:z-20 hover:scale-105"
@@ -194,7 +194,7 @@ const img3ZIndex = 3;
 					</div>
 				) : selectedImages.length === 2 ? (
 					<!-- 2 images: artistic overlapping dual layout -->
-					<div class="relative flex items-center justify-center" style="width: 180px; height: 120px;">
+					<div class="relative flex items-center justify-center w-[180px] h-[120px]">
 						<!-- Image 1 -->
 						<div
 							class="absolute overflow-hidden shadow-md transition-all duration-300 hover:z-20 hover:scale-105"
@@ -236,19 +236,18 @@ const img3ZIndex = 3;
 					</div>
 				) : (
 					<!-- Single image: larger display -->
-					<div class="relative overflow-hidden shadow-sm group-hover:shadow-md transition-shadow">
+					<div class="relative overflow-hidden shadow-sm group-hover:shadow-md transition-shadow w-[180px] h-[120px]">
 						<img
 							src={selectedImages[0]}
 							alt={`Cover image for ${post.Title}`}
-							class="object-cover transition-transform duration-300 group-hover:scale-105"
-							style="width: 180px; height: 120px;"
+							class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
 							loading="lazy"
 							decoding="async"
 						/>
 					</div>
 				)
 			) : (
-				<div class="flex h-28 w-36 items-center justify-center bg-gray-100 dark:bg-gray-800">
+				<div class="flex h-28 w-36 items-center justify-center bg-gray-100 dark:bg-gray-800 rounded">
 					<Icon
 						class="h-12 w-12 text-gray-300 dark:text-gray-600"
 						name="image"

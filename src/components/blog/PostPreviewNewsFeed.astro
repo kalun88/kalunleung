@@ -52,34 +52,34 @@ const { blocks } = await getPostContentByPostId(post);
 <!-- Single-line calendar/list format: Date | Title | Excerpt | Tags -->
 <article class={`calendar-entry group relative ${borderClasses} py-2 transition-all duration-200 w-full overflow-hidden news-feed-item`}>
 	<!-- Main row (always visible) -->
-	<div class="flex items-center gap-2 px-2 hover:bg-gray-50 transition-colors duration-200">
-		<!-- Date (fixed width) -->
-		<div class="flex-shrink-0 w-32">
+	<div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 px-2 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors duration-200">
+		<!-- Date (fixed width on desktop, full width on mobile) -->
+		<div class="flex-shrink-0 w-full sm:w-32">
 			{postDate && (
-				<FormattedDate date={postDate} class="text-sm text-gray-500 font-normal hover:text-blue-600 transition-colors whitespace-nowrap" />
+				<FormattedDate date={postDate} class="text-sm text-gray-500 dark:text-gray-400 font-normal hover:text-blue-600 dark:hover:text-blue-400 transition-colors whitespace-nowrap" />
 			)}
 		</div>
 
 		<!-- Title (super wide for news feed, but allows excerpt to show) -->
-		<div class="flex-shrink w-[min(600px,60vw)] min-w-[180px]">
-			<h3 class="text-sm font-semibold text-slate-900 truncate">
+		<div class="flex-shrink w-full sm:w-[min(600px,60vw)] sm:min-w-[180px]">
+			<h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
 				{post.Title}
 			</h3>
 		</div>
 
-		<!-- Excerpt (flexible width) -->
-		<div class="flex-grow min-w-0">
+		<!-- Excerpt (flexible width, hidden on mobile) -->
+		<div class="flex-grow min-w-0 hidden sm:block">
 			{post.Excerpt && (
-				<p class="text-sm text-slate-600 italic truncate">
+				<p class="text-sm text-slate-600 dark:text-slate-400 italic truncate">
 					{post.Excerpt}
 				</p>
 			)}
 		</div>
 
-		<!-- Tags (right aligned) -->
-		<div class="flex-shrink-0">
+		<!-- Tags (right aligned, wrapped on mobile) -->
+		<div class="flex-shrink-0 w-full sm:w-auto">
 			{posttags.length > 0 && (
-				<div class="flex flex-wrap gap-2 justify-end font-mono text-xs">
+				<div class="flex flex-wrap gap-2 justify-start sm:justify-end font-mono text-xs">
 					{posttags.slice(0, 2).map((tag) => (
 						<a
 							class="inline-flex items-center transition-opacity hover:opacity-80"
@@ -90,7 +90,7 @@ const { blocks } = await getPostContentByPostId(post);
 						</a>
 					))}
 					{posttags.length > 2 && (
-						<span class="text-xs text-slate-500">+{posttags.length - 2}</span>
+						<span class="text-xs text-slate-500 dark:text-slate-400">+{posttags.length - 2}</span>
 					)}
 				</div>
 			)}

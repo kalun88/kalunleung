@@ -43,10 +43,10 @@ function getColumnType(cellContent: string) {
 ---
 
 <div
-	class="ntable relative max-w-full table-auto overflow-x-auto pb-2"
+	class="ntable relative w-full max-w-full overflow-x-auto pb-2"
 	id={setId ? block.Id : undefined}
 >
-	<table class={`w-full text-left text-sm text-textColor/90 ${tableClass}`}>
+	<table class={`w-full min-w-[640px] text-left text-sm text-textColor/90 ${tableClass}`}>
 		<thead>
 			{
 				block.Table?.HasColumnHeader && (

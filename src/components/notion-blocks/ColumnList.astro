@@ -18,35 +18,36 @@ const isThreeColumn = columnCount === 3;
 const isFourColumn = columnCount === 4;
 ---
 
-<div class="mx-auto my-4 block w-full max-w-full flex-wrap gap-x-8 sm:flex md:flex-nowrap">
+<div class="notion-column-list mx-auto my-4 flex flex-col md:flex-row w-full max-w-full gap-4 md:gap-x-8 md:flex-nowrap">
 	{
 		block.ColumnList.Columns.map((column: interfaces.Column, index: number) => {
-			let columnClasses = "ncolumns w-full max-w-full min-w-0";
+			let columnClasses = "notion-column w-full max-w-full min-w-0";
+			let desktopWidth = "";
 			let inlineStyle = "";
-			
+
 			if (isTwoColumn) {
-				// Use configurable percentage widths for 2-column layouts
+				// Use configurable percentage widths for 2-column layouts (only on md+)
 				const widthKey = `column-${index + 1}-width` as keyof typeof TWO_COLUMN_LAYOUT;
-				const width = TWO_COLUMN_LAYOUT[widthKey];
-				columnClasses += " sm:flex-shrink-0 sm:flex-grow-0";
-				inlineStyle = `width: ${width}`;
+				desktopWidth = TWO_COLUMN_LAYOUT[widthKey];
+				columnClasses += " md:flex-shrink-0 md:flex-grow-0";
+				inlineStyle = `--desktop-width: ${desktopWidth};`;
 			} else if (isThreeColumn) {
-				// Use configurable percentage widths for 3-column layouts
+				// Use configurable percentage widths for 3-column layouts (only on md+)
 				const widthKey = `column-${index + 1}-width` as keyof typeof THREE_COLUMN_LAYOUT;
-				const width = THREE_COLUMN_LAYOUT[widthKey];
-				columnClasses += " sm:flex-shrink-0 sm:flex-grow-0";
-				inlineStyle = `width: ${width}`;
+				desktopWidth = THREE_COLUMN_LAYOUT[widthKey];
+				columnClasses += " md:flex-shrink-0 md:flex-grow-0";
+				inlineStyle = `--desktop-width: ${desktopWidth};`;
 			} else if (isFourColumn) {
-				// Use configurable percentage widths for 4-column layouts
+				// Use configurable percentage widths for 4-column layouts (only on md+)
 				const widthKey = `column-${index + 1}-width` as keyof typeof FOUR_COLUMN_LAYOUT;
-				const width = FOUR_COLUMN_LAYOUT[widthKey];
-				columnClasses += " sm:flex-shrink-0 sm:flex-grow-0";
-				inlineStyle = `width: ${width}`;
+				desktopWidth = FOUR_COLUMN_LAYOUT[widthKey];
+				columnClasses += " md:flex-shrink-0 md:flex-grow-0";
+				inlineStyle = `--desktop-width: ${desktopWidth};`;
 			} else {
-				// 5+ column layouts: use original equal distribution
-				columnClasses += " flex-1 basis-44 sm:w-44 md:w-auto";
+				// 5+ column layouts: on mobile full width, on desktop equal distribution
+				columnClasses += " md:flex-1 md:basis-44";
 			}
-			
+
 			return (
 				<div class={columnClasses} style={inlineStyle}>
 					<NotionBlocks blocks={column.Children} renderChildren={renderChildren} setId={setId} />
@@ -55,3 +56,17 @@ const isFourColumn = columnCount === 4;
 		})
 	}
 </div>
+
+<style>
+	/* Mobile-first: columns stack vertically by default */
+	.notion-column {
+		width: 100%;
+	}
+
+	/* Desktop: apply custom widths via CSS variable set in inline style */
+	@media (min-width: 768px) {
+		.notion-column.md\:flex-shrink-0 {
+			width: var(--desktop-width, 33.33%);
+		}
+	}
+</style>
