@@ -1,11 +1,11 @@
 const dateOptions = {
 	date: {
 		locale: "en",
-		options: {
-			day: "numeric",
-			month: "short",
-			year: "numeric",
-		},
+		   options: {
+			   day: "numeric" as const,
+			   month: "short" as const,
+			   year: "numeric" as const,
+		   },
 	},
 };
 
@@ -15,15 +15,17 @@ export function getFormattedDate(
 	date: string | number | Date,
 	options?: Intl.DateTimeFormatOptions,
 ) {
-	//console.log("DATE: ", date);
+	const parsedDate = new Date(date);
+	if (!date || isNaN(parsedDate.getTime())) {
+		return "Invalid Date";
+	}
 	if (typeof options !== "undefined") {
-		return new Date(date).toLocaleDateString(dateOptions.date.locale, {
+		return parsedDate.toLocaleDateString(dateOptions.date.locale, {
 			...(dateOptions.date.options as Intl.DateTimeFormatOptions),
 			...options,
 		});
 	}
-
-	return dateFormat.format(new Date(date));
+	return dateFormat.format(parsedDate);
 }
 
 export function getFormattedDateWithTime(date: string | number | Date) {
