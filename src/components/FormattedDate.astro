@@ -11,7 +11,17 @@ const { date, dateTimeOptions, ...attrs } = Astro.props;
 
 const isValidDate = date instanceof Date && !isNaN(date.getTime());
 const postDate = getFormattedDate(date, dateTimeOptions);
+const datetimeAttr = isValidDate ? date.toISOString() : undefined;
 
 <time datetime={isValidDate ? date.toISOString() : ''} {...attrs}>
 	{isValidDate ? postDate : 'Invalid Date'}
 </time>
+{isValidDate ? (
+	<time datetime={datetimeAttr} {...attrs}>
+		{postDate}
+	</time>
+) : (
+	<time {...attrs}>
+		Invalid Date
+	</time>
+)}
