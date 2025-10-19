@@ -55,9 +55,6 @@ const cities = Object.entries(cityCounts).sort((a, b) => a[0].localeCompare(b[0]
 				{years.map(year => (
 					<div class="year-group" data-year={year}>
 						{gigsByYear[year].map(gig => {
-							const gigDate = gig.Date ? new Date(gig.Date + 'T00:00:00') : null;
-							const gigDateEnd = gig.DateEnd ? new Date(gig.DateEnd + 'T00:00:00') : null;
-
 							return (
 								<article
 									class={`gig-item border-b border-slate-200 dark:border-slate-700 py-3 px-2 transition-all duration-200 ${gig.Residency ? 'is-residency' : ''}`}
@@ -66,15 +63,15 @@ const cities = Object.entries(cityCounts).sort((a, b) => a[0].localeCompare(b[0]
 								>
 									<div class="flex flex-col sm:flex-row items-start gap-2 sm:gap-4 gig-main-row">
 										<!-- Date column -->
-										<div class="flex-shrink-0 w-full sm:w-32 font-mono text-sm text-gray-500 dark:text-gray-400">
-											{gig.Residency && gigDate && gigDateEnd ? (
+										<div class="flex-shrink-0 w-full sm:w-32 font-mono text-sm text-gray-500 dark:text-gray-400 sm:pt-0.5">
+											{gig.Residency && gig.Date && gig.DateEnd ? (
 												<div class="flex flex-col items-start leading-tight">
-													<FormattedDate date={gigDate} class="whitespace-nowrap" />
+													<FormattedDate date={gig.Date} class="whitespace-nowrap" />
 													<span class="text-center w-full">⋮</span>
-													<FormattedDate date={gigDateEnd} class="whitespace-nowrap" />
+													<FormattedDate date={gig.DateEnd} class="whitespace-nowrap" />
 												</div>
-											) : gigDate && (
-												<FormattedDate date={gigDate} class="whitespace-nowrap" />
+											) : gig.Date && (
+												<FormattedDate date={gig.Date} class="whitespace-nowrap" />
 											)}
 										</div>
 
@@ -92,7 +89,7 @@ const cities = Object.entries(cityCounts).sort((a, b) => a[0].localeCompare(b[0]
 										</div>
 
 										<!-- Right side: Ensemble and Location (rightmost) -->
-										<div class="flex-shrink-0 flex flex-wrap items-center gap-2 sm:gap-3 text-sm w-full sm:w-auto">
+										<div class="flex-shrink-0 flex flex-wrap items-center gap-2 sm:gap-3 text-sm w-full sm:w-auto sm:pt-0.5">
 											{gig.With && gig.With.trim() !== '' && (
 												<span class="text-slate-600 dark:text-slate-400">
 													<span class="text-slate-400 dark:text-slate-500">with </span>{gig.With}

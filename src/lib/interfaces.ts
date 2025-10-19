@@ -18,6 +18,7 @@ export interface Post {
 	Cover: FileObject | null;
 	Slug: string;
 	Date: string;
+	Venue?: string;
 	Tags: SelectProperty[];
 	Excerpt: string;
 	FeaturedImage: FileObject | null;

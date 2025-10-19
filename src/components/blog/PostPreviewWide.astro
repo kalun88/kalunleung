@@ -76,9 +76,17 @@ const img3ZIndex = 3;
 	></a>
 
 	<div class="grid grid-cols-1 md:grid-cols-[200px_1fr_auto] gap-6 items-start">
-		<!-- Column 1: Tags (top) + Date (bottom) -->
-		<div class="flex flex-col justify-between min-h-[120px] font-mono">
-			<!-- Tags at top -->
+		<!-- Column 1: Date (top-left) + Tags (under date) -->
+		<div class="flex flex-col justify-start min-h-[120px] font-mono">
+			<!-- Date at top-left -->
+			<div class="mb-2">
+				<FormattedDate
+					date={post.Date}
+					class="font-mono text-sm text-gray-500 dark:text-gray-400"
+				/>
+			</div>
+
+			<!-- Tags under the date -->
 			<div class="space-y-1">
 				{post.Tags && post.Tags.length > 0 ? (
 					post.Tags.slice(0, 3).map((tag) => (
@@ -95,14 +103,6 @@ const img3ZIndex = 3;
 					<div class="text-xs text-gray-400">[]</div>
 				)}
 			</div>
-
-			<!-- Date at bottom -->
-			<div class="mt-auto">
-				<FormattedDate
-					date={new Date(post.Date + 'T00:00:00')}
-					class="text-xs text-gray-600 dark:text-gray-400"
-				/>
-			</div>
 		</div>
 
 		<!-- Column 2: Title + Excerpt -->
@@ -116,7 +116,7 @@ const img3ZIndex = 3;
 						focusable="false"
 					/>
 				)}
-				<Tag class="text-xl font-semibold text-gray-900 dark:text-white leading-tight group-hover:text-accent transition-colors">
+				<Tag class="text-xl font-semibold text-slate-900 dark:text-slate-100 leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
 					{post.Title}
 				</Tag>
 			</div>

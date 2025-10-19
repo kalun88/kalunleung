@@ -208,7 +208,7 @@ const img3ZIndex = 3;
 	<div class="flex-grow flex flex-col">
 		<!-- Line 1: Date and Tag (right-justified) -->
 		<div class="mb-2 flex items-center justify-between">
-			<FormattedDate date={new Date(post.Date + 'T00:00:00')} class="text-sm text-gray-500 font-normal" />
+			<FormattedDate date={post.Date} class="font-mono text-sm text-gray-500 dark:text-gray-400" />
 			{/* Single tag on right - mono font with brackets */}
 			{post.Tags && post.Tags.length > 0 && (
 				<a
@@ -234,7 +234,7 @@ const img3ZIndex = 3;
 					/>
 				)
 			}
-			<Tag class="text-xl font-semibold text-gray-900 leading-tight line-clamp-2 group-hover:text-accent transition-colors flex-1" id={`post-title-${post.PageId}`}>
+			<Tag class="text-xl font-semibold text-slate-900 dark:text-slate-100 leading-tight line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors flex-1" id={`post-title-${post.PageId}`}>
 				{post.Title}
 			</Tag>
 		</div>

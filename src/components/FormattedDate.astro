@@ -3,25 +3,34 @@ import type { HTMLAttributes } from "astro/types";
 import { getFormattedDate } from "@/utils";
 
 type Props = HTMLAttributes<"time"> & {
-	date: Date;
+	date?: string | number | Date | null;
 	dateTimeOptions?: Intl.DateTimeFormatOptions;
 };
 
-const { date, dateTimeOptions, ...attrs } = Astro.props;
+const { date, dateTimeOptions } = Astro.props as Props;
 
-const isValidDate = date instanceof Date && !isNaN(date.getTime());
-const postDate = getFormattedDate(date, dateTimeOptions);
-const datetimeAttr = isValidDate ? date.toISOString() : undefined;
+// Get formatted date (returns empty string if invalid)
+const formattedDate = getFormattedDate(date, dateTimeOptions);
 
-<time datetime={isValidDate ? date.toISOString() : ''} {...attrs}>
-	{isValidDate ? postDate : 'Invalid Date'}
-</time>
-{isValidDate ? (
-	<time datetime={datetimeAttr} {...attrs}>
-		{postDate}
-	</time>
-) : (
-	<time {...attrs}>
-		Invalid Date
+// Create datetime attribute for valid dates
+let datetimeAttr = "";
+if (date) {
+	try {
+		const parsedDate = date instanceof Date ? date : new Date(date);
+		if (!isNaN(parsedDate.getTime())) {
+			datetimeAttr = parsedDate.toISOString();
+		}
+	} catch (e) {
+		// Invalid date, leave datetimeAttr empty
+	}
+}
+
+// Forward class attribute if provided (commonly used for styling)
+const cls = (Astro.props as any).class ?? "";
+---
+
+{formattedDate && (
+	<time class={cls} datetime={datetimeAttr}>
+		{formattedDate}
 	</time>
 )}

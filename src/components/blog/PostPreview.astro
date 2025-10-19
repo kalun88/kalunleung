@@ -1,7 +1,6 @@
 ---
-// import type { CollectionEntry } from "astro:content";
-// import type { HTMLTag, Polymorphic } from "astro/types";
 import type { HTMLTag } from "astro/types";
+// import type { HTMLTag, Polymorphic } from "astro/types";
 import FormattedDate from "@/components/FormattedDate.astro";
 import type { Post } from "@/lib/interfaces";
 import { getNotionColorToTailwindColor } from "@/lib/style-helpers";
@@ -20,7 +19,7 @@ const { post, as: Tag = "div", withDesc = false } = Astro.props;
 const postLink = getPostLink(post.Slug, post.Collection === MENU_PAGES_COLLECTION);
 ---
 
-<FormattedDate date={new Date(post.Date + 'T00:00:00')} class="text-accent/90 min-w-[120px] text-sm" />
+<FormattedDate date={post.Date} class="font-mono text-sm text-gray-500 dark:text-gray-400 min-w-[120px]" />
 <Tag>
 	{
 		post.Pinned && (

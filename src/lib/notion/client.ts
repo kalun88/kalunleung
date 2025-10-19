@@ -74,7 +74,8 @@ const client = new Client({
 	notionVersion: "2025-09-03",
 });
 
-let resolvedDataSourceId: string | null = null;
+// Keep this as a non-null string (empty until resolved) to simplify callers
+let resolvedDataSourceId: string = "";
 
 const numberOfRetry = 2;
 const minTimeout = 1000; // waits 1 second before the first retry
@@ -82,7 +83,8 @@ const factor = 2; // doubles the wait time with each retry
 
 let allEntriesCache: Post[] | null = null;
 let dsCache: Database | null = null;
-let blockIdPostIdMap: { [key: string]: string } | null = null;
+// Initialize as empty object to avoid many null checks throughout the file
+let blockIdPostIdMap: { [key: string]: string } = {};
 let allTagsWithCountsCache: { name: string; count: number; description: string; color: string }[] | null = null;
 
 const BUILDCACHE_DIR = BUILD_FOLDER_PATHS["buildcache"];
@@ -335,7 +337,8 @@ function updateBlockIdPostIdMap(postId: string, blocks: Block[]) {
 }
 
 export function getBlockIdPostIdMap(): { [key: string]: string } {
-	if (blockIdPostIdMap === null) {
+	// Load from cache if we haven't populated the map yet
+	if (!blockIdPostIdMap || Object.keys(blockIdPostIdMap).length === 0) {
 		blockIdPostIdMap = loadBuildcache<{ [key: string]: string }>("blockIdPostIdMap.json") || {};
 	}
 	return blockIdPostIdMap;
@@ -357,28 +360,22 @@ export function createReferencesToThisEntry(
 			referencesInPage.forEach((reference) => {
 				// Check and collect blocks where InternalHref.PageId matches an entryId in the map
 				reference.other_pages.forEach((richText) => {
-					if (richText.InternalHref?.PageId && entryReferencesMap[richText.InternalHref.PageId]) {
-						entryReferencesMap[richText.InternalHref.PageId].push({
-							entryId: entryId,
-							block: reference.block,
-						});
-					} else if (
-						richText.Mention?.Page?.PageId &&
-						entryReferencesMap[richText.Mention?.Page?.PageId]
-					) {
-						entryReferencesMap[richText.Mention.Page.PageId].push({
-							entryId: entryId,
-							block: reference.block,
-						});
+					const internalPageId = richText.InternalHref?.PageId;
+					if (internalPageId && entryReferencesMap[internalPageId]) {
+						entryReferencesMap[internalPageId].push({ entryId: entryId, block: reference.block });
+						return;
+					}
+
+					const mentionPageId = richText.Mention?.Page?.PageId;
+					if (mentionPageId && entryReferencesMap[mentionPageId]) {
+						entryReferencesMap[mentionPageId].push({ entryId: entryId, block: reference.block });
 					}
 				});
 
 				// Check and collect blocks where link_to_pageid matches an entryId in the map
-				if (reference.link_to_pageid && entryReferencesMap[reference.link_to_pageid]) {
-					entryReferencesMap[reference.link_to_pageid].push({
-						entryId: entryId,
-						block: reference.block,
-					});
+				const linkToPageId = reference.link_to_pageid;
+				if (linkToPageId && entryReferencesMap[linkToPageId]) {
+					entryReferencesMap[linkToPageId].push({ entryId: entryId, block: reference.block });
 				}
 			});
 		}
@@ -435,6 +432,8 @@ export async function getAllBlocksByBlockId(blockId: string): Promise<Block[]> {
 
 	for (let i = 0; i < allBlocks.length; i++) {
 		const block = allBlocks[i];
+		// Guard against unexpected undefined entries
+		if (!block) continue;
 
 		if (block.Type === "table" && block.Table) {
 			block.Table.Rows = await _getTableRows(block.Id);
@@ -573,27 +572,25 @@ export async function getAllTagsWithCounts(): Promise<
 	const { propertiesRaw } = await getDataSource();
 	const options = propertiesRaw.Tags?.multi_select?.options || [];
 
-	const tagsNameWDesc = options.reduce(
-		(acc, option) => {
-			acc[option.name] = option.description || "";
-			return acc;
-		},
-		{} as Record<string, string>,
-	);
+	const tagsNameWDesc = options.reduce((acc, option) => {
+		acc[option.name] = option.description || "";
+		return acc;
+	}, {} as Record<string, string>);
 	const tagCounts: Record<string, { count: number; description: string; color: string }> = {};
 
 	filteredPosts.forEach((post) => {
 		post.Tags.forEach((tag) => {
 			const tagName = tag.name;
-			if (tagCounts[tag.name]) {
-				tagCounts[tag.name].count++;
-			} else {
-				tagCounts[tagName] = {
-					count: 1,
-					description: tagsNameWDesc[tag.name] ? tagsNameWDesc[tag.name] : "",
-					color: tag.color,
-				};
-			}
+				const existing = tagCounts[tag.name];
+				if (existing) {
+					existing.count++;
+				} else {
+					tagCounts[tagName] = {
+						count: 1,
+						description: tagsNameWDesc[tag.name] ?? "",
+						color: tag.color,
+					};
+				}
 		});
 	});
 
@@ -616,14 +613,16 @@ export function generateFilePath(url: URL, convertoWebp: boolean = false) {
 	// Get the directory name from the second last segment of the path
 	const segments = url.pathname.split("/");
 	const dirName = segments.slice(-2)[0];
-	const dir = path.join(BASE_DIR, dirName);
+	const dirNameSafe = dirName || "misc";
+	const dir = path.join(BASE_DIR, dirNameSafe);
 
 	if (!fs.existsSync(dir)) {
 		fs.mkdirSync(dir);
 	}
 
 	// Get the file name and decode it
-	const filename = decodeURIComponent(segments.slice(-1)[0]);
+	const filenameSegment = segments.slice(-1)[0] || "file";
+	const filename = decodeURIComponent(filenameSegment);
 	let filepath = path.join(dir, filename);
 
 	if (convertoWebp && isConvImageType(filename)) {
@@ -650,7 +649,8 @@ export function generateStableFilePath(postId: string, url: URL, convertoWebp: b
 
 	// Get the filename from the URL (last segment)
 	const segments = url.pathname.split("/");
-	const filename = decodeURIComponent(segments.slice(-1)[0]);
+	const filenameSegment2 = segments.slice(-1)[0] || "file";
+	const filename = decodeURIComponent(filenameSegment2);
 	let filepath = path.join(dir, filename);
 
 	if (convertoWebp && isConvImageType(filename)) {
@@ -1542,6 +1542,7 @@ function _buildPost(pageObject: responses.PageObject): Post {
 		Collection: prop.Collection?.select ? prop.Collection.select.name : "",
 		Slug: prop.Slug?.formula?.string ? slugify(prop.Slug.formula.string) : "",
 		Date: prop["Publish Date"]?.formula?.date ? prop["Publish Date"]?.formula?.date.start : "",
+		Venue: prop.Venue?.rich_text ? prop.Venue.rich_text.map((richText) => richText.plain_text).join("") : "",
 		Tags: prop.Tags?.multi_select ? prop.Tags.multi_select : [],
 		Excerpt:
 			prop.Excerpt?.rich_text && prop.Excerpt.rich_text.length > 0
@@ -1635,9 +1636,9 @@ function _buildRichText(richTextObject: responses.RichTextObject): RichText {
 						" to " +
 						getFormattedDateWithTime(richTextObject.mention.date?.end)
 					: getFormattedDateWithTime(richTextObject.mention.date?.start)
-				: "Invalid Date";
+				: null;
 
-			mention.DateStr = formatted_date;
+				mention.DateStr = formatted_date;
 		} else if (
 			richTextObject.mention.type === "link_mention" &&
 			richTextObject.mention.link_mention
@@ -1797,7 +1798,7 @@ function _buildGig(pageObject: responses.PageObject): Gig {
 		Title: prop.Title?.title ? prop.Title.title.map((richText) => richText.plain_text).join("") : "",
 		Date: dateStart,
 		DateEnd: dateEnd,
-		Venue: prop.Venue?.rich_text ? prop.Venue.rich_text.map((richText) => richText.plain_text).join("") : "",
+		Venue: prop.Venue?.select ? prop.Venue.select.name : "",
 		With: prop.Ensemble?.rich_text ? prop.Ensemble.rich_text.map((richText) => richText.plain_text).join("") : "",
 		Members: prop.Personnel?.rich_text ? prop.Personnel.rich_text.map((richText) => richText.plain_text).join("") : "",
 		EventLink: prop.URL?.url || "",

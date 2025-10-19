@@ -24,33 +24,22 @@ const dateTimeOptions: Intl.DateTimeFormatOptions = {
 	{post.Title}
 </h1>
 <div class="flex max-w-full flex-wrap items-center gap-x-3 gap-y-2">
-	<p class="font-semibold">
-		<FormattedDate date={new Date(post.Date + 'T00:00:00')} dateTimeOptions={dateTimeOptions} />
+	<p class="font-mono text-sm text-gray-500 dark:text-gray-400">
+	<FormattedDate date={post.Date} dateTimeOptions={dateTimeOptions} />
 	</p>
 </div>
 {
 	post.Tags && post.Tags.length > 0 && (
-		<div class="mt-2">
-			<Icon
-				class="me-1 inline-block h-4 w-4"
-				name={"tag-outline"}
-				aria-hidden="true"
-				focusable="false"
-			/>
+		<div class="mt-2 font-mono text-xs space-x-2">
 			{post.Tags.map((tag, i) => (
-				<>
-					<a
-						class={`mt-1 inline-block rounded-lg px-2 ${getNotionColorToTailwindColor(
-							tag.color + "-background",
-							true,
-						)}`}
-						aria-label={`View more blogs with the tag ${tag.name}`}
-						href={getNavLink("/tags/" + slugify(tag.name) + "/")}
-						data-pagefind-filter="tags"
-					>
-						{tag.name}
-					</a>{" "}
-				</>
+				<a
+					class="inline-block transition-opacity hover:opacity-80"
+					aria-label={`View more blogs with the tag ${tag.name}`}
+					href={getNavLink("/tags/" + slugify(tag.name) + "/")}
+					data-pagefind-filter="tags"
+				>
+					[{tag.name}]
+				</a>
 			))}
 		</div>
 	)

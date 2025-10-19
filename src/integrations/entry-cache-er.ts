@@ -13,7 +13,16 @@ export default (): AstroIntegration => ({
 	name: "entry-cache-er",
 	hooks: {
 		"astro:build:start": async () => {
-			const entries = await getAllEntries();
+			let entries = [];
+			try {
+				entries = await getAllEntries();
+			} catch (err: any) {
+				console.warn(
+					"entry-cache-er: Failed to fetch entries from Notion. Skipping integration.",
+					(err && err.message) || String(err),
+				);
+				return;
+			}
 
 			const referencesInEntries = await Promise.all(
 				entries.map(async (entry) => {

@@ -12,13 +12,30 @@ const dateOptions = {
 const dateFormat = new Intl.DateTimeFormat(dateOptions.date.locale, dateOptions.date.options);
 
 export function getFormattedDate(
-	date: string | number | Date,
+	date: string | number | Date | null | undefined,
 	options?: Intl.DateTimeFormatOptions,
-) {
-	const parsedDate = new Date(date);
-	if (!date || isNaN(parsedDate.getTime())) {
-		return "Invalid Date";
+): string {
+	// Return empty string for invalid/missing dates instead of "Invalid Date"
+	if (
+		date === undefined ||
+		date === null ||
+		date === "" ||
+		(typeof date === "number" && isNaN(date)) ||
+		(typeof date === "string" && date.trim().toLowerCase() === "invalid date")
+	) {
+		return "";
 	}
+
+	// Parse the date
+	const parsedDate = date instanceof Date ? date : new Date(date);
+
+	// Check if parsing was successful
+	if (isNaN(parsedDate.getTime())) {
+		console.warn("getFormattedDate received unparsable date:", date);
+		return "";
+	}
+
+	// Format the date
 	if (typeof options !== "undefined") {
 		return parsedDate.toLocaleDateString(dateOptions.date.locale, {
 			...(dateOptions.date.options as Intl.DateTimeFormatOptions),
@@ -28,8 +45,21 @@ export function getFormattedDate(
 	return dateFormat.format(parsedDate);
 }
 
-export function getFormattedDateWithTime(date: string | number | Date) {
+export function getFormattedDateWithTime(
+	date: string | number | Date | null | undefined
+): string {
+	// Return empty string for invalid/missing dates
+	if (date === undefined || date === null || date === "") {
+		return "";
+	}
+
 	const ObjDate = new Date(date);
+
+	// Check if parsing was successful
+	if (isNaN(ObjDate.getTime())) {
+		console.warn("getFormattedDateWithTime received unparsable date:", date);
+		return "";
+	}
 
 	// Check if the date string contains a 'T' or if it's a number or Date object
 	let showTime = false;
