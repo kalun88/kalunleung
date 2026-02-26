@@ -2,8 +2,8 @@
 import type { SiteConfig } from "@/types";
 import { AUTHOR, WEBMENTION_LINK, HOME_PAGE_SLUG } from "@/constants";
 
-const siteTitle = "";
-const siteDescription = "";
+const siteTitle = "Kalun Leung";
+const siteDescription = "Hong Kong–born, Montréal-based performer-composer and trombonist working at the intersections of sound, movement, architecture, and space.";
 
 export const siteInfo: SiteConfig = {
 	title: siteTitle,

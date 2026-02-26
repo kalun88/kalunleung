@@ -35,7 +35,7 @@
 		"newsletter": "https://kalun.notion.site/28986f764edc806c92c8e4ceabecd660?pvs=105",
 		"this-github-repo": ""
 	},
-	"custom-domain": "https://www.kalunleung.ca",
+	"custom-domain": "www.kalunleung.ca",
 	"base-path": "",
 	"giscus": {
 		"data-repo": "",
@@ -191,5 +191,7 @@
 	},
 	"full-width-social-embeds": true,
 	"optimize-images": true,
-	"redirects": {}
+	"redirects": {
+		"/portfolio": "/collections/portfolio"
+	}
 }

@@ -53,7 +53,7 @@ const umamiSrc = isBuildOrPreviewMode? (setUmami && TRACKING["umami"]["self-host
 <meta name="author" content={siteInfo.author} />
 
 {/* Theme Colour */}
-<meta name="theme-color" content="" />
+<meta name="theme-color" content="#CB2941" />
 
 {/* Open Graph / Facebook */}
 <meta property="og:type" content={articleDate ? "article" : "website"} />
@@ -138,3 +138,27 @@ const umamiSrc = isBuildOrPreviewMode? (setUmami && TRACKING["umami"]["self-host
     navigation: auto;
   }
 </style>
+
+{/* Structured Data — Person schema for Google Knowledge Graph */}
+{!articleDate && (
+  <script type="application/ld+json" set:html={JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "name": "Kalun Leung",
+    "url": "https://www.kalunleung.ca",
+    "sameAs": [
+      "https://www.instagram.com/kalun_____"
+    ],
+    "jobTitle": "Performer, Composer, Instrument Builder",
+    "description": "Hong Kong–born, Montréal-based performer-composer and trombonist whose work navigates the intersections of sound, movement, architecture, and space.",
+    "knowsAbout": [
+      "Contemporary Music",
+      "Trombone",
+      "Instrument Building",
+      "Site-Specific Performance",
+      "Improvisation",
+      "Sound Sculpture",
+      "Performative Electronics"
+    ]
+  })} />
+)}

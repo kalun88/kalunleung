@@ -31,6 +31,7 @@ const rss_path = getNavLink("/rss.xml");
 			href={getNavLink("/")}
 			class="inline-flex items-center grayscale hover:filter-none focus-visible:filter-none sm:relative sm:inline-block forced-colors:grayscale-0 forced-colors:text-LinkText"
 			aria-current={url.pathname === "/" ? "page" : false}
+			aria-label="Home"
 		>
 			{
 				siteInfo.logo && siteInfo.logo.Type === "emoji" ? (
@@ -61,7 +62,7 @@ const rss_path = getNavLink("/rss.xml");
 						<span class="text-2xl font-bold sm:text-4xl">{siteInfo.title}</span>
 					</>
 				) : (
-					<span class="text-2xl font-bold sm:text-4xl">{siteInfo.title}</span>
+					<span class="sr-only">{siteInfo.title}</span>
 				)
 			}
 		</a>
@@ -81,7 +82,12 @@ const rss_path = getNavLink("/rss.xml");
 						onclick={link.isExternal ? `window.open('${link.path}', 'contact-form', 'width=600,height=1100,scrollbars=yes,resizable=yes'); return false;` : undefined}
 						data-astro-prefetch={link.isExternal ? undefined : true}
 					>
-						{link.title}
+						{link.title.includes('\n') && link.title.charCodeAt(0) >= 0x2580 && link.title.charCodeAt(0) <= 0x25FF ? (
+							<>
+								<span aria-hidden="true">{link.title.substring(0, link.title.indexOf('\n'))}</span>
+								{link.title.substring(link.title.indexOf('\n') + 1)}
+							</>
+						) : link.title}
 					</a>
 				))
 			}

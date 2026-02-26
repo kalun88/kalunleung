@@ -187,10 +187,13 @@
         display: none;
     }
 
-    /* Hide instructions completely on mobile */
+    /* On mobile: show instructions with mobile text only */
     @media (max-width: 768px) {
-        .alphabet-soup-instructions {
-            display: none !important;
+        .alphabet-soup-instructions .desktop-only {
+            display: none;
+        }
+        .alphabet-soup-instructions .mobile-only {
+            display: block;
         }
     }
 

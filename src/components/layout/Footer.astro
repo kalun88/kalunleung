@@ -20,7 +20,12 @@ const menuLinks = await getMenu();
 						href={link.path}
 						class="sm:hover:text-accent-2 px-4 py-2 underline-offset-4 sm:px-2 sm:py-0 sm:hover:underline"
 					>
-						{link.title}
+						{link.title.includes('\n') && link.title.charCodeAt(0) >= 0x2580 && link.title.charCodeAt(0) <= 0x25FF ? (
+							<>
+								<span aria-hidden="true">{link.title.substring(0, link.title.indexOf('\n'))}</span>
+								{link.title.substring(link.title.indexOf('\n') + 1)}
+							</>
+						) : link.title}
 					</a>
 					{index < menuLinks.length - 1 && (
 						<div class="flex items-center sm:hidden">
