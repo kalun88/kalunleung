@@ -1,0 +1,622 @@
+    // Store animation frame ID and cleanup function
+    let animationFrameId = null;
+    let cleanupFunctions = [];
+
+    function initAlphabetSoup() {
+        const canvas = document.getElementById('alphabet-soup-canvas');
+        if (!canvas) return;
+
+        // Clean up previous instance
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+            animationFrameId = null;
+        }
+        cleanupFunctions.forEach(fn => fn());
+        cleanupFunctions = [];
+
+        const ctx = canvas.getContext('2d');
+        const customCursor = document.getElementById('custom-cursor');
+
+        // Set canvas dimensions
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+        }
+        resizeCanvas();
+
+        const resizeHandler = () => resizeCanvas();
+        window.addEventListener('resize', resizeHandler);
+        cleanupFunctions.push(() => window.removeEventListener('resize', resizeHandler));
+
+        // Draw bullet journal dotted grid background
+        function drawGrid() {
+            const dotSpacing = 20; // Space between dots
+            const dotSize = 1.5; // Size of each dot
+            const fadeDistance = 100; // Distance from edge where fade starts
+
+            ctx.save();
+
+            for (let x = dotSpacing; x < canvas.width; x += dotSpacing) {
+                for (let y = dotSpacing; y < canvas.height; y += dotSpacing) {
+                    // Calculate distance from edges
+                    const distFromLeft = x;
+                    const distFromRight = canvas.width - x;
+                    const distFromTop = y;
+                    const distFromBottom = canvas.height - y;
+
+                    // Find minimum distance to any edge
+                    const minDistToEdge = Math.min(
+                        distFromLeft,
+                        distFromRight,
+                        distFromTop,
+                        distFromBottom
+                    );
+
+                    // Calculate alpha based on distance to edge
+                    let alpha = 0.15; // Base opacity for center dots
+                    if (minDistToEdge < fadeDistance) {
+                        alpha = 0.15 * (minDistToEdge / fadeDistance);
+                    }
+
+                    ctx.fillStyle = `rgba(203, 41, 65, ${alpha})`;
+                    ctx.beginPath();
+                    ctx.arc(x, y, dotSize, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            ctx.restore();
+        }
+
+        // Symbol set
+        const symbols = ['梁', '家', '綸', '▁', '▄', '▉', '▇', '▙', '▞', '▦', '◍', '▰', '◗', '☗'];
+        const color = 'rgb(203, 41, 65)';
+
+        // Particles
+        const particles = [];
+        const permanentParticles = [];
+        const MAX_PARTICLES = 300;
+        const MAX_PERMANENT = 500;
+
+        // Mouse state
+        let mouseX = 0;
+        let mouseY = 0;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+        let mouseSpeed = 0;
+        let isPaintMode = false;
+        let isEraseMode = false;
+
+        // Get mouse position relative to canvas
+        function getMousePos(e) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+        }
+
+        // Calculate edge fade factor based on distance to nearest edge
+        function getEdgeFadeFactor(x, y) {
+            const fadeDistance = 80; // Distance from edge where fade starts
+
+            const distFromLeft = x;
+            const distFromRight = canvas.width - x;
+            const distFromTop = y;
+            const distFromBottom = canvas.height - y;
+
+            const minDistToEdge = Math.min(
+                distFromLeft,
+                distFromRight,
+                distFromTop,
+                distFromBottom
+            );
+
+            if (minDistToEdge < fadeDistance) {
+                return minDistToEdge / fadeDistance;
+            }
+            return 1.0;
+        }
+
+        // Particle class for temporary trail
+        class Particle {
+            constructor(x, y, size, symbol) {
+                this.x = x;
+                this.y = y;
+                this.size = size;
+                this.symbol = symbol;
+                this.alpha = 1.0;
+                this.vx = (Math.random() - 0.5) * 0.5;
+                this.vy = (Math.random() - 0.5) * 0.5;
+                this.fadeRate = 0.008 + Math.random() * 0.005; // Slower fade (was 0.015 + 0.01)
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.alpha -= this.fadeRate;
+            }
+
+            draw() {
+                const edgeFade = getEdgeFadeFactor(this.x, this.y);
+                const finalAlpha = this.alpha * edgeFade;
+
+                ctx.save();
+                ctx.globalAlpha = finalAlpha;
+                ctx.fillStyle = color;
+                ctx.font = `${this.size}px monospace`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(this.symbol, this.x, this.y);
+                ctx.restore();
+            }
+
+            isDead() {
+                return this.alpha <= 0;
+            }
+        }
+
+        // Permanent particle class
+        class PermanentParticle {
+            constructor(x, y, size, symbol) {
+                this.x = x;
+                this.y = y;
+                this.size = size;
+                this.symbol = symbol;
+                this.rotation = 0;
+                this.vx = 0;
+                this.vy = 0;
+                this.rotationVelocity = 0;
+                this.friction = 0.92;
+            }
+
+            update() {
+                // Apply velocity
+                this.x += this.vx;
+                this.y += this.vy;
+                this.rotation += this.rotationVelocity;
+
+                // Apply friction
+                this.vx *= this.friction;
+                this.vy *= this.friction;
+                this.rotationVelocity *= this.friction;
+
+                // Keep within bounds
+                const margin = 50;
+                if (this.x < margin) this.x = margin;
+                if (this.x > canvas.width - margin) this.x = canvas.width - margin;
+                if (this.y < margin) this.y = margin;
+                if (this.y > canvas.height - margin) this.y = canvas.height - margin;
+            }
+
+            applyForce(fx, fy, torque) {
+                this.vx += fx;
+                this.vy += fy;
+                this.rotationVelocity += torque;
+            }
+
+            draw() {
+                const edgeFade = getEdgeFadeFactor(this.x, this.y);
+
+                ctx.save();
+                ctx.globalAlpha = edgeFade;
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+                ctx.fillStyle = color;
+                ctx.font = `${this.size}px monospace`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(this.symbol, 0, 0);
+                ctx.restore();
+            }
+
+            distanceTo(x, y) {
+                const dx = this.x - x;
+                const dy = this.y - y;
+                return Math.sqrt(dx * dx + dy * dy);
+            }
+        }
+
+        // Create particles based on mouse movement
+        function createParticles(x, y, speed) {
+            // Get fade factor - reduce particle creation near edges
+            const edgeFade = getEdgeFadeFactor(x, y);
+
+            // Don't create trail particles if too close to edge
+            if (edgeFade < 0.5) {
+                return;
+            }
+
+            const baseSize = 20;
+            const speedMultiplier = Math.min(speed / 10, 5); // Increased from 3 to 5
+            const size = baseSize + (speedMultiplier * 25); // Increased from 15 to 25
+
+            // Make particles sparse using probability
+            const probability = (0.35 + speed / 150) * edgeFade; // 35% base chance + speed bonus
+
+            // Only create particle based on probability
+            if (Math.random() < probability) {
+                if (particles.length >= MAX_PARTICLES) {
+                    particles.shift();
+                }
+
+                const offsetX = (Math.random() - 0.5) * 10;
+                const offsetY = (Math.random() - 0.5) * 10;
+                const symbol = symbols[Math.floor(Math.random() * symbols.length)];
+
+                particles.push(new Particle(x + offsetX, y + offsetY, size, symbol));
+            }
+        }
+
+        // Create permanent particle (painting mode) - matches trail density
+        function createPermanentParticle(x, y, speed) {
+            // Get fade factor - reduce particle creation near edges
+            const edgeFade = getEdgeFadeFactor(x, y);
+
+            // Don't create permanent particles if too close to edge
+            if (edgeFade < 0.3) {
+                return;
+            }
+
+            // Use same logic as trail particles for consistent density
+            const baseSize = 20;
+            const speedMultiplier = Math.min(speed / 10, 5);
+            const size = baseSize + (speedMultiplier * 25);
+
+            // Same probability as the trail for consistent density
+            const probability = (0.35 + speed / 150) * edgeFade;
+
+            // Only create particle based on probability
+            if (Math.random() < probability) {
+                if (permanentParticles.length >= MAX_PERMANENT) {
+                    permanentParticles.shift();
+                }
+
+                const offsetX = (Math.random() - 0.5) * 10;
+                const offsetY = (Math.random() - 0.5) * 10;
+                const symbol = symbols[Math.floor(Math.random() * symbols.length)];
+
+                permanentParticles.push(new PermanentParticle(x + offsetX, y + offsetY, size, symbol));
+            }
+        }
+
+        // Erase permanent particles near cursor
+        function eraseNearby(x, y) {
+            const eraseRadius = 40;
+            for (let i = permanentParticles.length - 1; i >= 0; i--) {
+                if (permanentParticles[i].distanceTo(x, y) < eraseRadius) {
+                    permanentParticles.splice(i, 1);
+                }
+            }
+        }
+
+        // Push permanent particles away from cursor with rotation
+        function pushParticles(x, y, speed) {
+            const pushRadius = 100;
+            const pushStrength = 0.5;
+            const rotationStrength = 0.02;
+
+            for (const particle of permanentParticles) {
+                const dist = particle.distanceTo(x, y);
+                if (dist < pushRadius && dist > 0) {
+                    // Calculate push direction (away from cursor)
+                    const dx = particle.x - x;
+                    const dy = particle.y - y;
+                    const angle = Math.atan2(dy, dx);
+
+                    // Force decreases with distance
+                    const forceMagnitude = (1 - dist / pushRadius) * pushStrength * (speed * 0.1 + 0.5);
+                    const fx = Math.cos(angle) * forceMagnitude;
+                    const fy = Math.sin(angle) * forceMagnitude;
+
+                    // Rotation based on perpendicular movement
+                    const perpAngle = angle + Math.PI / 2;
+                    const rotationDirection = Math.cos(perpAngle) * (lastMouseX - x) + Math.sin(perpAngle) * (lastMouseY - y);
+                    const torque = rotationDirection * rotationStrength * (1 - dist / pushRadius) * (speed * 0.01 + 0.5);
+
+                    particle.applyForce(fx, fy, torque);
+                }
+            }
+        }
+
+        // Update custom cursor position and mode
+        function updateCursor(clientX, clientY) {
+            if (customCursor) {
+                customCursor.style.left = clientX + 'px';
+                customCursor.style.top = clientY + 'px';
+            }
+        }
+
+        function setCursorMode(mode) {
+            if (customCursor) {
+                customCursor.className = 'active ' + mode + '-mode';
+            }
+        }
+
+        // Mouse events
+        const handleMouseMove = (e) => {
+            const pos = getMousePos(e);
+            lastMouseX = mouseX;
+            lastMouseY = mouseY;
+            mouseX = pos.x;
+            mouseY = pos.y;
+
+            // Update custom cursor position
+            updateCursor(e.clientX, e.clientY);
+
+            const dx = mouseX - lastMouseX;
+            const dy = mouseY - lastMouseY;
+            mouseSpeed = Math.sqrt(dx * dx + dy * dy);
+
+            if (isEraseMode) {
+                eraseNearby(mouseX, mouseY);
+            } else if (isPaintMode) {
+                createPermanentParticle(mouseX, mouseY, mouseSpeed);
+            } else {
+                // Not in paint mode - show trail and push painted symbols
+                createParticles(mouseX, mouseY, mouseSpeed);
+                pushParticles(mouseX, mouseY, mouseSpeed);
+            }
+        };
+
+        const handleMouseDown = (e) => {
+            const pos = getMousePos(e);
+            mouseX = pos.x;
+            mouseY = pos.y;
+
+            // Toggle paint mode on click (unless in erase mode)
+            if (!isEraseMode) {
+                isPaintMode = !isPaintMode;
+                setCursorMode(isPaintMode ? 'paint' : 'push');
+
+                // Create initial particle when entering paint mode
+                if (isPaintMode) {
+                    createPermanentParticle(mouseX, mouseY, 0);
+                }
+            }
+        };
+
+        const handleMouseUp = () => {
+            // No action needed for mouse up in toggle mode
+        };
+
+        const handleMouseLeave = () => {
+            // Keep paint mode active even when leaving canvas
+            // Hide custom cursor when leaving canvas
+            if (customCursor) {
+                customCursor.classList.remove('active');
+            }
+        };
+
+        const handleMouseEnter = (e) => {
+            // Show custom cursor when entering canvas
+            if (customCursor) {
+                customCursor.classList.add('active');
+                updateCursor(e.clientX, e.clientY);
+            }
+        };
+
+        canvas.addEventListener('mousemove', handleMouseMove);
+        canvas.addEventListener('mouseenter', handleMouseEnter);
+        canvas.addEventListener('mousedown', handleMouseDown);
+        canvas.addEventListener('mouseup', handleMouseUp);
+        canvas.addEventListener('mouseleave', handleMouseLeave);
+
+        cleanupFunctions.push(() => {
+            canvas.removeEventListener('mousemove', handleMouseMove);
+            canvas.removeEventListener('mouseenter', handleMouseEnter);
+            canvas.removeEventListener('mousedown', handleMouseDown);
+            canvas.removeEventListener('mouseup', handleMouseUp);
+            canvas.removeEventListener('mouseleave', handleMouseLeave);
+        });
+
+        // Touch events for mobile
+        let touchHoldTimer = null;
+        let isTouchPainting = false;
+
+        const handleTouchMove = (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const pos = getMousePos(touch);
+            lastMouseX = mouseX;
+            lastMouseY = mouseY;
+            mouseX = pos.x;
+            mouseY = pos.y;
+
+            const dx = mouseX - lastMouseX;
+            const dy = mouseY - lastMouseY;
+            mouseSpeed = Math.sqrt(dx * dx + dy * dy);
+
+            if (isTouchPainting) {
+                // Painting mode - leave permanent marks
+                createPermanentParticle(mouseX, mouseY, mouseSpeed);
+            } else {
+                // Not painting - show trail and push symbols
+                createParticles(mouseX, mouseY, mouseSpeed);
+                pushParticles(mouseX, mouseY, mouseSpeed);
+            }
+        };
+
+        const handleTouchStart = (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const pos = getMousePos(touch);
+            mouseX = pos.x;
+            mouseY = pos.y;
+
+            // Start timer for hold detection (300ms to activate painting)
+            touchHoldTimer = setTimeout(() => {
+                isTouchPainting = true;
+                // Haptic feedback if available
+                if (navigator.vibrate) {
+                    navigator.vibrate(50);
+                }
+                createPermanentParticle(mouseX, mouseY, 0);
+            }, 300);
+        };
+
+        const handleTouchEnd = (e) => {
+            e.preventDefault();
+            // Clear hold timer if touch ends before hold duration
+            if (touchHoldTimer) {
+                clearTimeout(touchHoldTimer);
+                touchHoldTimer = null;
+            }
+            // Exit painting mode
+            isTouchPainting = false;
+        };
+
+        canvas.addEventListener('touchmove', handleTouchMove);
+        canvas.addEventListener('touchstart', handleTouchStart);
+        canvas.addEventListener('touchend', handleTouchEnd);
+        canvas.addEventListener('touchcancel', handleTouchEnd);
+
+        cleanupFunctions.push(() => {
+            canvas.removeEventListener('touchmove', handleTouchMove);
+            canvas.removeEventListener('touchstart', handleTouchStart);
+            canvas.removeEventListener('touchend', handleTouchEnd);
+            canvas.removeEventListener('touchcancel', handleTouchEnd);
+            if (touchHoldTimer) {
+                clearTimeout(touchHoldTimer);
+            }
+        });
+
+        // Keyboard events for erase mode
+        const handleKeyDown = (e) => {
+            if (e.code === 'Space' && document.activeElement === document.body) {
+                e.preventDefault();
+                isEraseMode = true;
+                setCursorMode('erase');
+            }
+        };
+
+        const handleKeyUp = (e) => {
+            if (e.code === 'Space') {
+                isEraseMode = false;
+                setCursorMode(isPaintMode ? 'paint' : 'push');
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', handleKeyUp);
+
+        cleanupFunctions.push(() => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('keyup', handleKeyUp);
+        });
+
+        // Animation loop
+        function animate() {
+            // Clear with full opacity for clean frame
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw grid background first
+            drawGrid();
+
+            // Update and draw permanent particles (middle layer)
+            for (const particle of permanentParticles) {
+                particle.update();
+                particle.draw();
+            }
+
+            // Update and draw temporary trail particles (top layer)
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const particle = particles[i];
+                particle.update();
+
+                if (particle.isDead()) {
+                    particles.splice(i, 1);
+                } else {
+                    particle.draw();
+                }
+            }
+
+            animationFrameId = requestAnimationFrame(animate);
+        }
+
+        // Start animation
+        animate();
+
+        // (The first-interaction "fade instructions" handler used to live
+        //  here. It controlled the floating .alphabet-soup-instructions
+        //  overlay inside the canvas wrapper. That element has been
+        //  removed — the hint copy now lives in the site footer's COLOPHON
+        //  section — so there's nothing to fade.)
+
+        // Hero mode: scroll indicator management and canvas fade
+        if (document.body.classList.contains('alphabet-soup-hero')) {
+            const scrollIndicator = document.getElementById('scroll-indicator');
+
+            // Calculate fade distance based on viewport height
+            // Start fading at 50vh, fully transparent by 100vh (one full screen scroll)
+            const fadeStartDistance = window.innerHeight * 0.5;  // 50% of viewport height
+            const fadeEndDistance = window.innerHeight * 1.0;     // 100% of viewport height
+
+            // Handle scroll events with progressive opacity
+            function updateCanvasOpacity() {
+                const scrollY = window.scrollY;
+
+                if (scrollY <= fadeStartDistance) {
+                    // Fully visible - before fade starts
+                    canvas.style.opacity = '1';
+                    document.body.classList.remove('scrolled');
+                } else if (scrollY >= fadeEndDistance) {
+                    // Fully transparent - after fade ends
+                    canvas.style.opacity = '0';
+                    document.body.classList.add('scrolled');
+                } else {
+                    // Progressive fade between fadeStart and fadeEnd
+                    const fadeProgress = (scrollY - fadeStartDistance) / (fadeEndDistance - fadeStartDistance);
+                    const opacity = 1 - fadeProgress;
+                    canvas.style.opacity = opacity.toString();
+
+                    // Add scrolled class when mostly faded
+                    if (opacity < 0.3) {
+                        document.body.classList.add('scrolled');
+                    } else {
+                        document.body.classList.remove('scrolled');
+                    }
+                }
+            }
+
+            // Update on scroll
+            window.addEventListener('scroll', updateCanvasOpacity);
+
+            // Initial call
+            updateCanvasOpacity();
+
+            // Update fade distances on window resize
+            const handleHeroResize = () => {
+                const newFadeStart = window.innerHeight * 0.5;
+                const newFadeEnd = window.innerHeight * 1.0;
+                updateCanvasOpacity();
+            };
+            window.addEventListener('resize', handleHeroResize);
+
+            // Click scroll indicator to scroll down
+            const handleScrollIndicatorClick = () => {
+                window.scrollTo({
+                    top: window.innerHeight,
+                    behavior: 'smooth'
+                });
+            };
+            scrollIndicator?.addEventListener('click', handleScrollIndicatorClick);
+
+            cleanupFunctions.push(() => {
+                window.removeEventListener('scroll', updateCanvasOpacity);
+                window.removeEventListener('resize', handleHeroResize);
+                scrollIndicator?.removeEventListener('click', handleScrollIndicatorClick);
+            });
+        }
+    }
+
+    // Initialize on page load
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initAlphabetSoup);
+    } else {
+        initAlphabetSoup();
+    }
+
+    // Re-initialize after Astro View Transitions navigation
+    document.addEventListener('astro:page-load', initAlphabetSoup);

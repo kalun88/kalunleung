@@ -1,0 +1,270 @@
+---
+import { siteInfo } from "@/site.config";
+import type { RichText as RichTextT } from "@/lib/interfaces";
+import RichText from "@/components/notion-blocks/RichText.astro";
+
+/**
+ * Alphabet-soup hero with editorial overlay.
+ *
+ * Markup mirrors docs/mocks/Homepage.html:
+ *   .soup-hero.soup-soup-tall
+ *     #alphabet-soup-wrapper > canvas + cursor
+ *     .hero-overlay
+ *       .hero-meta (mono row, top): INDEX — 001 / HOME | 梁家綸 · EST. YYYY | UPDATED YYYY·MM·DD
+ *       .hero-title (huge "Kalun Leung")
+ *       .hero-roles (one .hero-row line per non-empty Notion row)
+ *       .hero-foot (optional pull-quote + ↓ scroll cue, bottom)
+ *
+ * Soup hint text (click to commit · move to push · hold space to erase)
+ * is intentionally absent here; it lives in the site footer's COLOPHON
+ * section so the hero can stay typographically quiet.
+ *
+ * Subtitle comes from THREE separate Notion rich-text properties on the home
+ * row: SubtitleRow1, SubtitleRow2, SubtitleRow3. Each row renders on its own
+ * line, and inline Notion formatting (bold/italic/underline/strikethrough/
+ * code/color) is honoured via the shared <RichText> renderer used elsewhere
+ * in the site. Italic is decoupled from the accent colour — italicising in
+ * Notion no longer auto-colours red; pick a Notion text colour explicitly
+ * if you want red.
+ *
+ * The particle/canvas behaviour lives in /public/scripts/alphabet-soup.js
+ * (extracted verbatim from alphabet-soup-smooth-trail.html so the proven
+ * physics is preserved).
+ */
+
+interface Props {
+	/** Rich-text array for hero subtitle line 1. Empty array hides the line. */
+	row1?: RichTextT[];
+	/** Rich-text array for hero subtitle line 2. Empty array hides the line. */
+	row2?: RichTextT[];
+	/** Rich-text array for hero subtitle line 3. Empty array hides the line. */
+	row3?: RichTextT[];
+	/** Status text from the home page row (Notion). Currently unused in the
+	 *  hero meta strip — reserved if you want to surface "Currently:" later. */
+	status?: string;
+	/** Author / brand name. Fallback: siteInfo.author. */
+	author?: string;
+	/** ISO date string for the "UPDATED" meta. Falls back to today. */
+	updated?: string;
+	/** Established year for "EST. YYYY". Defaults to 2018. */
+	establishedYear?: number;
+	/** Index number shown top-left ("INDEX — NNN / HOME"). Defaults to "001". */
+	indexNumber?: string;
+	/** Press pull-quote text. Supports `*emphasis*` markdown for the accent
+	 *  italic treatment (e.g. `*mubone*`). Empty string hides the quote. */
+	heroQuote?: string;
+	/** Citation eyebrow above the quote (e.g. "↳ Kranichstein 2025"). */
+	heroQuoteCitation?: string;
+}
+
+const {
+	row1 = [],
+	row2 = [],
+	row3 = [],
+	status: _status = "",
+	author = (siteInfo as { author?: string }).author ?? siteInfo.title,
+	updated,
+	establishedYear = 2018,
+	indexNumber = "001",
+	heroQuote = "",
+	heroQuoteCitation = "",
+} = Astro.props;
+
+// A row is "present" if it has at least one rich-text run with non-empty
+// plain_text. Empty rich-text properties come through as [], and Notion
+// occasionally emits a single run with an empty string — both are filtered
+// out so the hero collapses cleanly when fewer than three rows are set.
+function rowHasContent(row: RichTextT[]): boolean {
+	if (!row || row.length === 0) return false;
+	return row.some((rt) => (rt.PlainText ?? "").length > 0);
+}
+const rows = [row1, row2, row3].filter(rowHasContent);
+
+// Split a quote string on `*foo*` segments into [text, em, text, em, …]
+// runs so the renderer can wrap em runs in <em>. Order is preserved.
+// Returns an array of { text, em } where exactly one of those is set per item.
+function parseQuoteRuns(s: string): { text?: string; em?: string }[] {
+	if (!s) return [];
+	const runs: { text?: string; em?: string }[] = [];
+	const re = /\*([^*]+)\*/g;
+	let last = 0;
+	let m: RegExpExecArray | null;
+	while ((m = re.exec(s)) !== null) {
+		if (m.index > last) runs.push({ text: s.slice(last, m.index) });
+		runs.push({ em: m[1] });
+		last = m.index + m[0].length;
+	}
+	if (last < s.length) runs.push({ text: s.slice(last) });
+	return runs;
+}
+const quoteRuns = parseQuoteRuns(heroQuote);
+
+// Format the "UPDATED" line as YYYY·MM·DD (mono, dot-separated, mock style).
+function formatUpdated(input?: string): string {
+	const d = input ? new Date(input) : new Date();
+	if (Number.isNaN(d.getTime())) return "";
+	const yyyy = d.getFullYear();
+	const mm = String(d.getMonth() + 1).padStart(2, "0");
+	const dd = String(d.getDate()).padStart(2, "0");
+	return `${yyyy}·${mm}·${dd}`;
+}
+const updatedStr = formatUpdated(updated);
+---
+
+<section class="soup-hero soup-soup-tall" aria-label="Hero">
+	<div id="alphabet-soup-wrapper">
+		<canvas id="alphabet-soup-canvas"></canvas>
+		<div id="custom-cursor" class="push-mode"></div>
+		{/* Hint text (click to commit · move to push · hold space to erase) lives
+		    in the site footer's COLOPHON now. No floating overlay here. */}
+	</div>
+
+	<div class="hero-overlay">
+		<div class="hero-meta">
+			<span>INDEX — {indexNumber} / HOME</span>
+			<span>梁家綸 · HONG KONG · MONTREAL · NEW YORK</span>
+			{updatedStr && <span>UPDATED {updatedStr}</span>}
+		</div>
+
+		<h1 class="hero-title">
+			<span class="hero-name">{author}</span>
+			<span class="hero-roles">
+				{rows.map((row) => (
+					<span class="hero-row">
+						{row.map((rt) => (
+							<RichText richText={rt} />
+						))}
+					</span>
+				))}
+			</span>
+		</h1>
+
+		<div class="hero-foot">
+			{/* Pull-quote slot. When heroQuote is set on the home page row in
+			    Notion, it renders here. When empty the slot is omitted entirely
+			    — the alphabet-soup hint text it used to fall back to has moved
+			    to the site footer's COLOPHON. */}
+			{heroQuote && (
+				<div class="hero-pull">
+					{heroQuoteCitation && <span class="mono">{heroQuoteCitation}</span>}
+					<p>
+						{quoteRuns.map((run) =>
+							run.em ? <em>{run.em}</em> : run.text
+						)}
+					</p>
+				</div>
+			)}
+			<div class="hero-cta">
+				<span class="mono">↓ scroll</span>
+			</div>
+		</div>
+	</div>
+</section>
+
+<script is:inline src="/scripts/alphabet-soup.js"></script>
+
+{/*
+  Hero subtitle typewriter — pre-paint snapshot.
+  Runs synchronously during HTML parse (because it's `is:inline` and sits
+  AFTER the .hero-row markup). It captures each row's full innerHTML into
+  a data attribute, then empties the row, so visitors never see the full
+  text before the typewriter starts. Skipped when the user prefers
+  reduced motion — those visitors keep the static rows as rendered.
+*/}
+<script is:inline>
+	(function () {
+		try {
+			var prefersReduced =
+				window.matchMedia &&
+				window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+			if (prefersReduced) return;
+			var rows = document.querySelectorAll(".hero-row");
+			for (var i = 0; i < rows.length; i++) {
+				rows[i].setAttribute("data-typewriter-html", rows[i].innerHTML);
+				rows[i].innerHTML = "";
+			}
+		} catch (e) { /* fail open: leave rows visible */ }
+	})();
+</script>
+
+{/*
+  Hero subtitle typewriter — animation driver.
+  After DOMContentLoaded, types each row back in by setting its innerHTML
+  to progressively longer prefixes of the snapshot. Prefixes are computed
+  by walking the source HTML and counting only characters that fall
+  outside `<…>` tag boundaries, so inline formatting (em / strong / span
+  with notion colour classes) survives at every frame — partial tags are
+  auto-closed by the browser when innerHTML is set. A blinking caret is
+  appended during typing and removed when each row finishes.
+*/}
+<script>
+	document.addEventListener("DOMContentLoaded", function () {
+		var rows = document.querySelectorAll(".hero-row[data-typewriter-html]");
+		if (!rows.length) return;
+		var queue = Array.prototype.slice.call(rows);
+		var charDelayMs = 32;   // per-character cadence
+		var rowDelayMs = 130;   // pause between rows
+		var startDelayMs = 180; // pause before row 1 begins (lets canvas paint)
+
+		// Walk the row's HTML, emitting one prefix per visible character.
+		// Tag content (everything between `<` and `>`) is appended to the
+		// running prefix but not counted, so e.g. `<em>Comp` is a valid
+		// prefix that renders as italic "Comp". Entities like &amp; are
+		// treated as one visible character (rare in our subtitle copy).
+		function buildPrefixes(html) {
+			var prefixes = [];
+			var inTag = false;
+			var prefix = "";
+			for (var i = 0; i < html.length; i++) {
+				var c = html[i];
+				prefix += c;
+				if (c === "<") inTag = true;
+				else if (c === ">") inTag = false;
+				else if (!inTag) {
+					if (c === "&") {
+						var end = html.indexOf(";", i);
+						if (end !== -1 && end - i < 10) {
+							prefix += html.substring(i + 1, end + 1);
+							i = end;
+						}
+					}
+					prefixes.push(prefix);
+				}
+			}
+			return prefixes;
+		}
+
+		var caretHtml = '<span class="hero-caret" aria-hidden="true"></span>';
+
+		function typeRow(row, done) {
+			var fullHtml = row.getAttribute("data-typewriter-html") || "";
+			var prefixes = buildPrefixes(fullHtml);
+			if (!prefixes.length) {
+				row.innerHTML = fullHtml;
+				row.removeAttribute("data-typewriter-html");
+				done();
+				return;
+			}
+			var idx = 0;
+			(function tick() {
+				if (idx >= prefixes.length) {
+					row.innerHTML = fullHtml;
+					row.removeAttribute("data-typewriter-html");
+					done();
+					return;
+				}
+				row.innerHTML = prefixes[idx] + caretHtml;
+				idx++;
+				setTimeout(tick, charDelayMs);
+			})();
+		}
+
+		function next() {
+			var row = queue.shift();
+			if (!row) return;
+			typeRow(row, function () { setTimeout(next, rowDelayMs); });
+		}
+
+		setTimeout(next, startDelayMs);
+	});
+</script>

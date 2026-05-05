@@ -137,10 +137,14 @@ const paginationProps = page ? {
 			{description && <q class="block italic mb-6 -mt-3">{description}</q>}
 		</div>
 		{/* manual-edit: Updated grid layout to support medium previews and news feed with sidebar */}
+		{/* manual-edit: Wrapper adds bottom padding so the last item doesn't butt against the page/footer rule.
+		   Mirrors .page-article's clamped bottom padding (80px–120px) used on other prose pages. */}
 		{isGigsCollection && gigs ? (
-			<GigsView gigs={gigs} />
+			<div class="pb-20 sm:pb-24 lg:pb-28 print:pb-0">
+				<GigsView gigs={gigs} />
+			</div>
 		) : (
-		<div class="grid grid-cols-3 sm:grid-cols-4 gap-y-16 sm:ml-8 print:ml-0 max-w-none sm:max-w-[98vw] lg:max-w-[96vw] xl:max-w-[1500px] print:max-w-full sm:items-start sm:gap-x-8">
+		<div class="grid grid-cols-3 sm:grid-cols-4 gap-y-16 sm:ml-8 print:ml-0 max-w-none sm:max-w-[98vw] lg:max-w-[96vw] xl:max-w-[1500px] print:max-w-full sm:items-start sm:gap-x-8 pb-20 sm:pb-24 lg:pb-28 print:pb-0">
 				<section aria-label="Blog post list" class="col-span-3 print:col-span-full">
 							{/* News feed layout */}
 							{NEWS_FEED_COLLECTIONS.includes(collection) ? (

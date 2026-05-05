@@ -24,10 +24,41 @@ export interface Post {
 	FeaturedImage: FileObject | null;
 	FeaturedImages: FileObject[]; // Array of all featured images for multi-image layouts
 	Rank: number;
+	// Manual ordering inside the homepage Highlights block. Distinct
+	// from `Rank` (which is reused by nav-page ordering and other
+	// callers). Lower = earlier; entries without a value sink to the end
+	// and tiebreak by Date desc.
+	HighlightRank: number;
 	LastUpdatedDate: string;
 	LastUpdatedTimeStamp: Date;
 	Pinned: boolean;
+	// Independent of `Pinned`. `Pinned` controls collection-page ordering;
+	// `Highlight` promotes the post to the cross-collection homepage
+	// Highlights block. A post can be Pinned, Highlighted, both, or
+	// neither.
+	Highlight: boolean;
+	// Per-section homepage promotion flag. Drives the homepage News
+	// strip when `homepage-collections.▉ news` is configured with
+	// `use-show-on-homepage-news: true`. Decoupled from `Highlight` so
+	// the cross-collection Highlights block and the News block can each
+	// be curated independently.
+	ShowOnHomepageNews: boolean;
 	BlueSkyPostLink: string | "";
+	// Redesign-specific rich_text properties on the Posts DB.
+	// Empty string when the row has no value set.
+	Role: string;
+	Status: string;
+	HeroQuote: string;
+	HeroQuoteCitation: string;
+	// Hero subtitle is split across three rich-text rows so each visual line
+	// can be controlled independently in Notion. Stored as RichText[] so
+	// inline formatting (bold/italic/underline/strike/code/color) is
+	// preserved end-to-end. An empty array means "row not set" — empty rows
+	// are skipped at render time, so a single populated row still renders
+	// as one line.
+	SubtitleRow1: RichText[];
+	SubtitleRow2: RichText[];
+	SubtitleRow3: RichText[];
 }
 
 export interface Gig {
@@ -41,6 +72,19 @@ export interface Gig {
 	EventLink: string;
 	City: string; // Format: "Toronto (CA)"
 	Residency: boolean;
+	// Cross-collection homepage promotion. Mirrors Post.Highlight: when
+	// true, the gig is eligible for the homepage Highlights block.
+	Highlight: boolean;
+	// Manual ordering inside the homepage Highlights block. Lower =
+	// earlier; gigs without a value fall to the end and tiebreak by Date
+	// desc. Same name/semantics as Post.HighlightRank so both source
+	// types sort consistently in the mixed list.
+	HighlightRank: number;
+	// Hero/feature image for the Highlights layout. Mirrors the file
+	// property on the CMS DB so dates can show a feature image in the
+	// projects-hybrid sticky panel. Missing image → soft-grey placeholder.
+	FeaturedImage: FileObject | null;
+	FeaturedImages: FileObject[];
 	LastUpdatedTimeStamp: Date;
 }
 

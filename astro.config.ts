@@ -71,6 +71,11 @@ function modifyRedirectPaths(
 export default defineConfig({
 	site: getSite(),
 	base: process.env.BASE || BASE_PATH,
+	// Disable the floating Astro Dev Toolbar that appears in `npm run dev`
+	// (the round dock with the Astro logo / cursor / settings icons in the
+	// bottom centre of the viewport). It's a built-in Astro tool, not part
+	// of our UI; it never ships in the production build either way.
+	devToolbar: { enabled: false },
 	redirects: key_value_from_json["redirects"]
 		? modifyRedirectPaths(key_value_from_json["redirects"], process.env.BASE || BASE_PATH)
 		: {},

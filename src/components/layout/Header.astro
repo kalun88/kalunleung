@@ -4,7 +4,10 @@ import { getMenu } from "@/utils";
 import { siteInfo } from "@/site.config";
 import { filePath, getNavLink } from "@/lib/blog-helpers";
 import Icon from "@/components/Icon.astro";
-import ThemeIcon from "@/components/ThemeIcon.astro";
+// ThemeIcon import removed — dark mode is intentionally disabled site-wide.
+// Visitors are always served the light theme; the picker is gone. The
+// component file is left in place (with its inline script that always
+// resolves to "light") for easy reinstatement if we change our minds.
 
 const menuLinks = await getMenu();
 
@@ -106,10 +109,8 @@ const rss_path = getNavLink("/rss.xml");
 		<div class="hidden">
 			<Search />
 		</div>
-		<!-- manual-edit: Hidden theme toggle button to force light mode -->
-		<div class="hidden">
-			<ThemeIcon />
-		</div>
+		<!-- Theme picker removed: site is light-mode-only by design. -->
+
 		<button
 			id="toggle-navigation-menu"
 			class="group relative z-50 ms-4 h-10 w-10 cursor-pointer sm:invisible sm:hidden p-1.5"

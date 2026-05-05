@@ -1,0 +1,57 @@
+---
+/**
+ * Shared block-head used by the redesigned homepage collections.
+ *
+ *   ▙   Selected Works   N=03 · 2023–2025   VIEW ALL ↗
+ *   ▙   News             03 ENTRIES         ALL NEWS ↗
+ *   ▣   Upcoming         N=04               ALL DATES ↗
+ *
+ * Two count formats are supported:
+ *   - countFormat="n-equals" (default for projects/dates) → "N=03"
+ *   - countFormat="entries"  (default for news)           → "03 ENTRIES"
+ *
+ * Optional `dateRange` appends "· YYYY–YYYY" after the count.
+ */
+interface Props {
+	glyph: string;
+	title: string;
+	count: number;
+	moreHref?: string;
+	moreLabel?: string;
+	dateRange?: string;
+	countFormat?: "n-equals" | "entries";
+	id?: string;
+}
+
+const {
+	glyph,
+	title,
+	count,
+	moreHref,
+	moreLabel = "VIEW ALL",
+	dateRange,
+	countFormat = "n-equals",
+	id,
+} = Astro.props;
+
+// Pad count to two digits (mock copy uses "N=03" / "03 ENTRIES").
+const countStr = String(count).padStart(2, "0");
+const formattedCount =
+	countFormat === "entries"
+		? `${countStr} ${count === 1 ? "ENTRY" : "ENTRIES"}`
+		: `N=${countStr}`;
+const countLine = dateRange ? `${formattedCount} · ${dateRange}` : formattedCount;
+---
+
+<header class="block-head" id={id}>
+	<span class="block-mark" aria-hidden="true">{glyph}</span>
+	<h2 class="block-title">{title}</h2>
+	<span class="block-count">{countLine}</span>
+	{
+		moreHref && (
+			<a class="block-more" href={moreHref} data-astro-prefetch>
+				{moreLabel} ↗
+			</a>
+		)
+	}
+</header>

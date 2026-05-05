@@ -33,25 +33,19 @@ const articleDate = new Date(post.Date).toISOString();
 
 <BaseLayout
 	meta={{ title: post.Title, description: post.Excerpt, articleDate, ogImage: socialImage }}
+	pageSlug={post.Slug}
 >
-	<div class="max-w-none sm:max-w-[90vw] lg:max-w-[85vw] xl:max-w-[1100px] sm:mr-20 print:mr-auto print:max-w-full">
-		<article class="break-words" data-pagefind-body>
-			<div id="blog-hero"><BlogHero post={post} /></div>
-			<div class="mt-8">
-				<slot />
-				{/* Post body content */}
-				{REFERENCES && <ReferencesSection post={post} shouldUseCache={shouldUseCache} />}
-			</div>
-		</article>
-		{/* Table of Contents disabled - uncomment line below to re-enable */}
-		{/* {!!headings.length && <TOC headings={headings} />} */}
-	</div>
-	<div class="max-w-none sm:max-w-[90vw] lg:max-w-[85vw] xl:max-w-[1100px] sm:mr-20 print:hidden">
-		<aside class="" data-pagefind-ignore="all">
-			<WebMentions />
-			<PostComments post={post} />
-		</aside>
-	</div>
+	<article id="blog-hero" class="page-article break-words" data-pagefind-body>
+		<BlogHero post={post} />
+		<slot />
+		{REFERENCES && <ReferencesSection post={post} shouldUseCache={shouldUseCache} />}
+	</article>
+	{/* Table of Contents disabled - uncomment line below to re-enable */}
+	{/* {!!headings.length && <TOC headings={headings} />} */}
+	<aside class="page-aside print:hidden" data-pagefind-ignore="all">
+		<WebMentions />
+		<PostComments post={post} />
+	</aside>
 	<button
 		id="to-top-btn"
 		class="fixed end-4 bottom-20 z-30 flex h-10 w-10 translate-y-28 cursor-pointer items-center justify-center rounded-full border-2 border-transparent bg-zinc-200 text-3xl opacity-0 transition-all duration-300 hover:border-zinc-400 data-[show=true]:translate-y-0 data-[show=true]:opacity-100 sm:end-8 sm:bottom-8 sm:h-12 sm:w-12 dark:bg-zinc-700 print:hidden"

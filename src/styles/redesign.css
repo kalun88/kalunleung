@@ -1,0 +1,756 @@
+/* ============================================================
+   REDESIGN — paper-white editorial w/ soup hero & dispatch news
+   Ported from docs/mocks/styles.css. Mock tokens (--bg, --ink,
+   --accent) are aliased to live theme tokens below so this CSS
+   re-themes automatically when --theme-* changes.
+
+   IMPORTANT: This file is imported separately from global.css
+   because the `theme-constants-to-css` integration overwrites
+   global.css on every build. Do not move these rules back into
+   global.css — they will be wiped.
+   ============================================================ */
+
+:root {
+  /* Aliases: mock token → live theme token (set in global.css @layer base) */
+  --bg: var(--theme-bg);
+  --ink: var(--theme-text);
+  --ink-2: rgb(from var(--theme-text) r g b / 0.85);
+  --dim: rgb(from var(--theme-text) r g b / 0.55);
+  --rule: rgb(from var(--theme-text) r g b / 0.85);
+  --rule-soft: rgb(from var(--theme-text) r g b / 0.16);
+  --accent: var(--theme-accent);
+
+  /* Layout tokens (no theme equivalent — defined here) */
+  --rail-w: 224px;
+  --pad: clamp(24px, 3.5vw, 64px);
+  --max: 1480px;
+}
+
+/* Body reset for the redesigned shell. Overrides @layer base
+   `html body { px-8 pt-8 flex flex-col ... }` which fights with
+   the rail + grid layout. */
+html body.redesign {
+  padding: 0;
+  display: block;
+  flex-direction: unset;
+}
+
+body.redesign img { max-width: 100%; display: block; }
+body.redesign a { color: inherit; text-decoration: none; }
+body.redesign .mono { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.02em; text-transform: uppercase; }
+body.redesign .dim { color: var(--dim); }
+
+/* ---------- PAGE ---------- */
+/* Thick rule between .page and .site-foot is painted as a box-shadow
+   immediately below the .page box (NOT as a border-top on .site-foot
+   nor a border-bottom on .page). Reason: the rail is sticky with
+   `height: 100vh` and `box-sizing: border-box`, so it can overflow its
+   grid cell by a pixel or two at the bottom — that overflow visually
+   masks any border-bottom on .page in the rail column, leaving a
+   discontinuous rule. A box-shadow paints OUTSIDE the .page box (at
+   y = page.bottom..page.bottom+2), so no descendant can overlap it,
+   and it spans the full body width as a single continuous line. */
+.page { display: grid; grid-template-columns: var(--rail-w) 1fr; min-height: 100vh; box-shadow: 0 2px 0 0 var(--ink); }
+body.rail-hidden .page { grid-template-columns: 1fr; }
+.main { padding: 0; max-width: var(--max); width: 100%; border-left: 1px solid var(--rule-soft); min-width: 0; }
+body.rail-hidden .main { border-left: none; }
+
+/* Default padding for prose/content pages (posts, /about, /mubone,
+   collection indexes). Horizontal only — prose wrappers (e.g. .page-article)
+   own the vertical rhythm. The home page opts out via .main--bare. */
+.main--prose { padding: 0 var(--pad); }
+
+/* ---------- RAIL ---------- */
+.rail { position: sticky; top: 0; align-self: start; height: 100vh; padding: var(--pad); z-index: 50; }
+.rail-inner { height: 100%; display: flex; flex-direction: column; justify-content: space-between; }
+.rail-mark { display: flex; flex-direction: column; font-size: 28px; line-height: 1; font-weight: 500; letter-spacing: -0.01em; margin-bottom: 40px; }
+.rail-mark span { display: block; }
+.rail-nav { display: flex; flex-direction: column; gap: 4px; font-family: var(--font-mono); font-size: 12px; }
+.rail-link { display: grid; grid-template-columns: 18px 1fr; gap: 12px; padding: 5px 0; align-items: baseline; border-bottom: 1px dashed transparent; transition: color 0.15s, border-color 0.15s; }
+.rail-link:hover { color: var(--accent); border-bottom-color: currentColor; }
+.rail-link[aria-current="page"] { color: var(--accent); }
+.rail-glyph { font-size: 14px; line-height: 1; }
+.rail-label { text-transform: lowercase; letter-spacing: 0.04em; }
+.rail-foot { font-family: var(--font-mono); font-size: 10.5px; line-height: 1.7; text-transform: uppercase; letter-spacing: 0.05em; border-top: 1px solid var(--rule-soft); padding-top: 18px; }
+.rail-meta { color: var(--ink-2); }
+.rail-meta-dim { color: var(--dim); margin-top: 6px; }
+
+/* ---------- SOUP HERO ---------- */
+.soup-hero { position: relative; width: 100%; }
+.soup-soup { height: 100vh; min-height: 720px; }
+.soup-soup-tall { height: 130vh; min-height: 900px; }
+#alphabet-soup-wrapper { position: absolute; inset: 0; z-index: 0; }
+#alphabet-soup-canvas { display: block; width: 100%; height: 100%; cursor: none; background: transparent; touch-action: none; }
+#custom-cursor { position: fixed; pointer-events: none; z-index: 9999; font-family: monospace; font-size: 100px; color: var(--accent); opacity: 0.9; transform: translate(-50%, -50%); transition: opacity 0.2s ease; display: none; }
+#custom-cursor.active { display: block; }
+#custom-cursor.push-mode::before { content: '◍'; }
+#custom-cursor.paint-mode::before { content: '▞'; }
+#custom-cursor.erase-mode::before { content: '▰'; }
+
+/*
+ * .alphabet-soup-instructions — removed. The soup hint text used to live
+ * as a floating overlay inside #alphabet-soup-wrapper; it now lives in
+ * the site footer's COLOPHON section. See SiteFooter.astro.
+ */
+
+/* Hero overlay — title typeset OVER the soup canvas */
+.hero-overlay { position: relative; z-index: 3; pointer-events: none; height: 100%; display: grid; grid-template-rows: auto 1fr auto; padding: var(--pad); min-height: inherit; }
+.soup-soup .hero-overlay { height: 100vh; min-height: 720px; }
+.soup-soup-tall .hero-overlay { height: 130vh; min-height: 900px; }
+.hero-overlay > * { pointer-events: auto; }
+
+.hero-meta { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); border-bottom: 1px solid var(--rule); padding-bottom: 12px; pointer-events: none; }
+.hero-title { margin: 0; align-self: center; font-size: clamp(56px, 11vw, 200px); font-weight: 500; line-height: 0.88; letter-spacing: -0.04em; text-wrap: balance; pointer-events: none; mix-blend-mode: multiply; }
+.hero-name { display: block; }
+.hero-roles { display: block; margin-top: 12px; color: var(--ink); font-weight: 400; font-size: clamp(28px, 4.4vw, 72px); line-height: 1; letter-spacing: -0.025em; }
+/* One Notion subtitle row per .hero-row block; rows stack vertically.
+   `min-height: 1em` reserves the row's vertical space so when the
+   typewriter clears the row to type it back in, the rows above don't
+   jump up. line-height on .hero-roles is 1, so 1em matches the painted
+   height once content arrives. */
+.hero-roles .hero-row { display: block; min-height: 1em; }
+.hero-roles .hero-row + .hero-row { margin-top: 0.08em; }
+/* Subtle blinking caret shown at the end of the row currently being
+   typed. Visible only while the typewriter script is mid-run; once a
+   row is complete, the caret element is removed by the script. */
+.hero-roles .hero-caret { display: inline-block; width: 0.06em; margin-left: 0.04em; vertical-align: baseline; background: currentColor; align-self: stretch; height: 0.85em; transform: translateY(0.05em); animation: hero-caret-blink 0.85s steps(1) infinite; opacity: 0.55; }
+@keyframes hero-caret-blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+	.hero-roles .hero-caret { animation: none; }
+}
+/* Italic in the hero is just italic — the accent colour now comes from
+   Notion's colour annotation, not from <em>. This decouples emphasis and
+   colour so SubtitleRow1/2/3 can italicise without auto-colouring red. */
+.hero-roles em { color: inherit; font-style: italic; font-family: var(--font-sans); }
+/* The shared <RichText> Notion colour renderer wraps coloured runs in a
+   <span class="text-n…-txt-… rounded-sm px-1">. The pill padding/radius
+   is fine in body copy but visually wrong on a 70px hero word, so flatten
+   it inside .hero-roles. The Tailwind text-color class still applies. */
+.hero-roles .hero-row span[class*="text-n"] { padding: 0; border-radius: 0; background: transparent; }
+
+/* Notion → site colour mapping (hero scope only).
+   By default Notion's "red" annotation uses Notion's stock red (~#e03e3e).
+   That clashes with the site's brand crimson (--accent: #cb2941 light /
+   #29bc88 dark), so we remap it here. The selector matches both Tailwind
+   light- and dark-mode variants (text-nred-txt-light / text-nred-txt-dark)
+   via attribute-contains, and beats Tailwind's specificity by chaining
+   .hero-roles .hero-row before the class match.
+   To remap other Notion colours, copy the pattern: add another rule for
+   text-norange / text-nblue / etc. pointing at whichever site token you
+   want (or define new ones in :root above). */
+.hero-roles .hero-row span[class*="text-nred"] { color: var(--accent); }
+.hero-foot { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 32px; align-items: end; border-top: 1px solid var(--rule); padding-top: 16px; pointer-events: none; }
+.hero-pull { max-width: 56ch; }
+.hero-pull .mono { color: var(--accent); display: block; margin-bottom: 6px; }
+.hero-pull p { margin: 0; font-size: clamp(14px, 1.05vw, 17px); line-height: 1.5; color: var(--ink-2); font-style: italic; }
+.hero-pull p em { color: var(--accent); font-style: italic; }
+/* "↓ scroll" cue is mobile-only — desktop visitors don't need a hint
+ *  that the page scrolls. Hidden by default; shown at the same
+ *  768px breakpoint the rest of the hero uses for mobile tweaks. */
+.hero-cta { display: none; }
+.hero-cta .mono { color: var(--ink-2); }
+@media (max-width: 768px) {
+  .hero-cta { display: block; }
+}
+/* On desktop, when the hero foot has no pull-quote (heroQuote empty in
+ * Notion) AND the scroll cue is hidden, the wrapper would still render
+ * an empty row with its top border + padding. Collapse it so the hero
+ * ends cleanly. Uses :has(); on browsers without :has() (rare in 2026)
+ * the empty bordered row reappears, which is visually benign. */
+@media (min-width: 769px) {
+  .hero-foot:not(:has(.hero-pull)) { display: none; }
+}
+
+/* ---------- BLOCKS ---------- */
+/* Renamed from `.block` to avoid colliding with Tailwind's `.block`
+   utility (display: block) which is applied to e.g. <img class="block">. */
+.cwk-section { padding: 96px var(--pad); border-bottom: 1px solid var(--rule); }
+/* Drop the section's own bottom rule on the last section — otherwise it
+   stacks with .page's box-shadow rule below it and reads as a doubled
+   border. The page-level rule is the one that should mark the page/footer
+   boundary; per-section dividers are only meaningful between sections. */
+.cwk-section:last-child { border-bottom: none; }
+/* margin-bottom: 0 so the underline meets the first list row directly.
+   The first row's own top padding then provides the gap from the rule
+   to the row's content — matching the inter-row rhythm (each row's
+   padding-top is the gap below the previous row's bottom border). */
+.block-head { display: grid; grid-template-columns: 32px auto 1fr auto; gap: 20px; align-items: baseline; padding-bottom: 32px; margin-bottom: 0; border-bottom: 1px solid var(--rule-soft); }
+.block-mark { font-size: 22px; color: var(--accent); }
+.block-title { margin: 0; font-size: clamp(28px, 3vw, 44px); font-weight: 500; letter-spacing: -0.025em; }
+.block-count { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--dim); justify-self: start; }
+.block-more { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid currentColor; }
+.block-more:hover { color: var(--accent); }
+
+/* ---------- WORKS · HYBRID (used by projects-hybrid display-style) ---------- */
+.works-hybrid { display: grid; grid-template-columns: 7fr 5fr; gap: 56px; align-items: start; position: relative; }
+.hybrid-feature { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 88px; }
+.hybrid-feature-img { position: relative; aspect-ratio: 4/3; overflow: hidden; background: var(--rule-soft); animation: featureFade 360ms cubic-bezier(.2,.7,.2,1); }
+.hybrid-feature-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.hybrid-feature-img-2 { position: absolute; right: -8%; bottom: -10%; width: 42%; height: 42%; object-fit: cover; box-shadow: 0 8px 24px rgba(0,0,0,0.18); }
+.hybrid-feature-num { position: absolute; top: 12px; left: 12px; background: var(--bg); color: var(--accent); font-size: 11px; letter-spacing: 0.12em; padding: 4px 8px; border: 1px solid var(--rule); }
+@keyframes featureFade {
+  0%   { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.hybrid-feature-title { margin: 8px 0 0; font-size: clamp(28px, 3.4vw, 52px); font-weight: 500; letter-spacing: -0.03em; line-height: 1; }
+.hybrid-feature-body { display: flex; flex-direction: column; gap: 8px; }
+.hybrid-feature-body p { font-size: 16px; line-height: 1.5; color: var(--ink-2); max-width: 50ch; margin: 4px 0; }
+
+.hybrid-rest { list-style: none; padding: 0; margin: 0; border-top: 1px solid var(--rule); }
+.hybrid-rest li { border-bottom: 1px solid var(--rule-soft); }
+.hybrid-rest li a { display: grid; grid-template-columns: 32px 1fr auto auto 18px; gap: 12px; align-items: baseline; padding: 14px 8px; margin: 0 -8px; font-size: 17px; letter-spacing: -0.01em; color: var(--ink); transition: background 160ms ease, padding 160ms ease; }
+.hybrid-rest-title { font-weight: 500; }
+.hybrid-rest-tag { font-size: 12px; }
+.hybrid-rest-yr { font-size: 12px; }
+.hybrid-rest-mark { font-family: var(--font-mono); color: var(--accent); opacity: 0; transform: translateX(-4px); transition: opacity 160ms ease, transform 160ms ease; }
+.hybrid-rest li.is-active a { background: var(--accent); color: var(--bg); padding-left: 14px; }
+.hybrid-rest li.is-active a .dim,
+.hybrid-rest li.is-active a .works-num { color: rgba(255,255,255,0.75); }
+.hybrid-rest li.is-active a .hybrid-rest-mark { color: var(--bg); opacity: 1; transform: translateX(0); }
+.works-num { font-family: var(--font-mono); font-size: 10.5px; color: var(--dim); margin-right: 8px; letter-spacing: 0.04em; }
+
+/* ---------- NEWS · LIST (used by news-list display-style) ---------- */
+.news-list { list-style: none; padding: 0; margin: 0; }
+/* Four-column grid: meta · body · flexible-gap · thumbnail.
+ * Body is sized to its content with a readability cap (capped at the
+ * excerpt's max-width). The 1fr column absorbs leftover viewport so the
+ * thumbnail stays glued to the right edge, and the empty space lives
+ * BETWEEN body and thumbnail as breathing room rather than a dead
+ * stripe inside the body column. Avoids the long-wide-empty-paragraph
+ * look that the previous `160px 1fr 200px` grid produced on wide
+ * viewports. */
+.news-row { position: relative; display: grid; grid-template-columns: 160px minmax(0, 65ch) 1fr 220px; gap: 32px; align-items: start; padding: 28px 0; border-bottom: 1px solid var(--rule-soft); transition: background 200ms ease; }
+.news-row:hover { background: rgb(from var(--ink) r g b / 0.015); }
+.news-row-link { position: absolute; inset: 0; z-index: 1; grid-column: 1 / -1; grid-row: 1 / -1; }
+.news-row > * { position: relative; }
+.news-meta { display: flex; flex-direction: column; gap: 6px; font-family: var(--font-mono); }
+.news-date { font-size: 13px; color: var(--ink-2); }
+.news-tag { font-size: 12px; color: var(--ink-2); align-self: flex-start; }
+.news-tag:hover { color: var(--accent); }
+.news-body { display: flex; flex-direction: column; gap: 8px; }
+.news-title { margin: 0; font-size: clamp(20px, 1.7vw, 26px); font-weight: 500; letter-spacing: -0.02em; line-height: 1.15; color: var(--ink); transition: color 160ms ease; }
+.news-row:hover .news-title { color: var(--accent); }
+.news-excerpt { margin: 0; font-size: 14.5px; line-height: 1.55; color: var(--ink-2); max-width: 60ch; text-wrap: pretty; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.news-dateline { font-size: 11.5px; letter-spacing: 0.04em; margin-top: 4px; }
+.news-thumb { grid-column: 4; width: 220px; height: 140px; overflow: hidden; background: var(--rule-soft); justify-self: end; }
+.news-thumb img { width: 100%; height: 100%; object-fit: cover; transition: transform 360ms ease; }
+.news-row:hover .news-thumb img { transform: scale(1.03); }
+
+/* ---------- POST PREVIEW · WIDE (collection-page rows for portfolio + news)
+   Replaces a Tailwind-heavy structure that vertically centered the title
+   and stretched the meta column awkwardly. Now a clean 3-col grid where
+   every column is top-aligned and the date+tags cluster tightly. */
+.pp-wide-grid {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr) auto;
+  gap: 32px;
+  align-items: start;
+  position: relative;
+}
+@media (max-width: 720px) {
+  .pp-wide-grid { grid-template-columns: 1fr; gap: 16px; }
+}
+
+/* Column 1 — meta (date + tags), tight stack at top of the row */
+.pp-wide-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-self: start;
+  font-family: var(--font-mono);
+}
+.pp-wide-date {
+  font-size: 13px;
+  color: var(--ink-2);
+  letter-spacing: 0.02em;
+}
+.pp-wide-tags {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+.pp-wide-tags a {
+  color: var(--ink-2);
+  transition: color 160ms ease;
+  /* Lift above the article-wide overlay link (z-index: 10) so tag
+     links remain individually clickable. */
+  position: relative;
+  z-index: 20;
+  align-self: flex-start;
+  pointer-events: auto;
+}
+.pp-wide-tags a:hover { color: var(--accent); }
+
+/* Column 2 — body */
+.pp-wide-body {
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.pp-wide-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.pp-wide-title {
+  font-size: clamp(20px, 1.7vw, 26px);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--ink);
+  transition: color 160ms ease;
+  margin: 0;
+}
+.pp-wide-grid:hover .pp-wide-title { color: var(--accent); }
+.pp-wide-excerpt {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--ink-2);
+  max-width: 60ch;
+  text-wrap: pretty;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Column 3 — images: align-self start ensures the collage starts at the
+   row top, matching the date and title. */
+.pp-wide-images {
+  align-self: start;
+}
+
+/* ---------- DATES · LIST (used by dates-list display-style on homepage) ---------- */
+.dates-list { list-style: none; padding: 0; margin: 0; }
+.dates-list li {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr) auto;
+  gap: 32px;
+  padding: 24px 0;
+  border-bottom: 1px solid var(--rule-soft);
+  /* center (rather than baseline) so a multi-line date column stacks
+     symmetrically around the row's center, instead of pushing the
+     row taller below the title's baseline. */
+  align-items: center;
+  /* Pin the row to the single-line height so multi-date rows match
+     the others. With align-items: center + tight line-height on the
+     date column, two-line date content fits inside this height. */
+  min-height: 77px;
+  transition: background 200ms ease;
+}
+.dates-list li:hover { background: rgb(from var(--ink) r g b / 0.015); }
+.dates-list li:last-child { border-bottom: none; }
+/* Multi-date entries ("2026·05·03 → 2026·05·06") wrap onto two lines.
+   Tight line-height keeps two lines within the same total height as
+   one line of the title (≈27px at the title's max font-size with
+   line-height 1.25), so the row doesn't grow. The row uses
+   align-items: center, so a 2-line date stacks symmetrically around
+   the title's vertical center. */
+.dates-list .dates-date { font-family: var(--font-mono); font-size: 13px; line-height: 1.05; color: var(--ink-2); letter-spacing: 0.02em; }
+.dates-list .dates-with { font-family: var(--font-mono); font-size: 11px; color: var(--dim); letter-spacing: 0.04em; text-transform: uppercase; margin-left: 12px; }
+.dates-list .dates-loc { font-family: var(--font-mono); font-size: 11px; color: var(--dim); letter-spacing: 0.04em; text-transform: uppercase; justify-self: end; white-space: nowrap; }
+.dates-title { font-size: clamp(18px, 1.5vw, 22px); font-weight: 500; letter-spacing: -0.015em; line-height: 1.25; color: var(--ink); }
+a.dates-title { transition: color 160ms ease; }
+a.dates-title:hover { color: var(--accent); }
+
+/* ---------- FOOTER (.site-foot ; renamed from mock .footer to avoid clobber) ---------- */
+/* The thick rule above the footer is painted by .page's border-bottom
+   so it spans both the rail and main columns. Don't add border-top here
+   or it will combine with .page's border-bottom into a 4px line. */
+.site-foot { padding: 96px var(--pad) 72px; display: grid; grid-template-columns: 1fr 2fr; gap: 80px; }
+.site-foot-mark { font-size: clamp(64px, 8vw, 120px); line-height: 0.9; letter-spacing: -0.02em; font-weight: 500; writing-mode: vertical-rl; text-orientation: upright; white-space: nowrap; }
+.site-foot-cols { display: grid; grid-template-columns: 1fr 1.2fr 1.5fr; gap: 32px; }
+.site-foot-cols h4 { margin: 0; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--dim); font-weight: 500; }
+.site-foot-cols ul { list-style: none; padding: 0; margin: 12px 0 0; display: flex; flex-direction: column; gap: 6px; }
+.site-foot-cols a { font-size: 15px; letter-spacing: -0.01em; }
+.site-foot-cols a:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 4px; }
+.site-foot-colo { font-size: 13px; line-height: 1.55; margin: 12px 0 6px; max-width: 38ch; color: var(--ink-2); text-wrap: pretty; }
+
+/* ---------- STANDALONE PAGES · EDITORIAL PROSE ----------
+   Targets the wrapper that [...page].astro renders for any page that
+   isn't the home (about, mubone, collaborations, posts, etc.). Body
+   content stays as Notion blocks rendered by NotionBlocks; these rules
+   restyle the elements those blocks emit. */
+
+.page-article {
+  max-width: 1280px;
+  padding: clamp(48px, 6vw, 96px) 0 clamp(80px, 7vw, 120px);
+  margin: 0;
+}
+
+/* Eyebrow — small mono row above the page title. e.g. "▁ about" */
+.page-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: clamp(20px, 3vw, 36px);
+}
+.page-eyebrow .glyph { margin-right: 8px; }
+
+/* Page title — the heading rendered from page.Title (not from the
+   Notion body). Authors should NOT add a heading_1 inside the body.
+   No auto-divider — add a `divider` block in Notion if you want one. */
+.page-title {
+  font-family: var(--font-sans);
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  line-height: 0.95;
+  margin: 0 0 clamp(32px, 5vw, 56px);
+  font-size: clamp(48px, 7vw, 120px);
+  text-wrap: balance;
+  color: var(--ink);
+}
+
+/* Post byline — date + tags row beneath the page title on single
+   post pages. Tightens the gap to the title (the page-title's own
+   bottom margin is intended for the gap to the post body, but when
+   a meta row sits between, we want it close to the title). */
+.page-article > .page-title:has(+ .post-meta) {
+  margin-bottom: 14px;
+}
+.page-article > .post-meta {
+  margin: 0 0 clamp(32px, 5vw, 56px);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.page-article > .post-meta .post-meta__date {
+  margin: 0;
+}
+.page-article > .post-meta .post-meta__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+.page-article > .post-meta .post-meta__tag {
+  transition: color 0.15s;
+}
+.page-article > .post-meta .post-meta__tag:hover {
+  color: var(--accent);
+}
+
+/* Aside (webmentions + comments) on single post pages. Mirrors
+   .page-article horizontally so it stays in the same column, but
+   omits the top padding since it follows the article. */
+.page-aside {
+  max-width: 1280px;
+  padding: 0 0 clamp(80px, 7vw, 120px);
+  margin: 0;
+}
+
+/* Post-body: shared editorial typography for prose content rendered
+   from Notion blocks. Tailwind utility classes from the block
+   components (e.g. my-1, border-s-4) are overridden here.
+   No max-width on the wrapper — fills the article (lets column_list,
+   tables, images span full width). Prose width is constrained at the
+   paragraph level instead. */
+.page-article .post-body {
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+
+/* Paragraphs — only top-level paragraphs get the readability clamp.
+   Paragraphs nested inside column_list, callout, toggle, etc. fill
+   their parent's width. */
+.page-article .post-body > p {
+  margin: 0 0 1.1em;
+  line-height: 1.55;
+  color: var(--ink-2);
+  max-width: 64ch;
+}
+/* Inside column_list / callout / toggle, paragraphs are flow content. */
+.page-article .post-body p {
+  margin: 0 0 0.9em;
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+/* Lede — the very first top-level paragraph, slightly larger and inked. */
+.page-article .post-body > p:first-of-type {
+  font-size: 1.18em;
+  color: var(--ink);
+  line-height: 1.45;
+  max-width: 60ch;
+}
+.page-article .post-body em { font-style: italic; color: var(--ink); }
+.page-article .post-body strong { font-weight: 600; color: var(--ink); }
+
+/* Headings inside Notion body. Heading_1 should not appear —
+   page.Title supplies the H1. Note that Notion's `heading_3` renders
+   as <h4> in this codebase (see Heading3.astro), so we style h4 too.
+   No auto-borders — use a Notion `divider` block if you want a
+   section rule. Headings work the same regardless of nesting depth
+   so they look right inside column_list as subheads. */
+.page-article .post-body h2,
+.page-article .post-body h3,
+.page-article .post-body h4 {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  text-wrap: balance;
+  color: var(--ink);
+}
+.page-article .post-body h2 {
+  font-size: clamp(20px, 2vw, 26px);
+  margin: 40px 0 14px;
+}
+.page-article .post-body h3 {
+  font-size: clamp(17px, 1.3vw, 20px);
+  margin: 28px 0 10px;
+}
+.page-article .post-body h4 {
+  font-size: clamp(14px, 1vw, 16px);
+  font-weight: 500;
+  margin: 32px 0 10px;
+  padding-top: 16px;
+  border-top: 1px solid var(--rule-soft);
+}
+/* When an H4 is the very first block in a column or after another
+   heading, drop the rule (the heading-above-heading is enough). */
+.page-article .post-body h4:first-child,
+.page-article .post-body h2 + h4,
+.page-article .post-body h3 + h4 {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+}
+.page-article .post-body .notion-column > h4:first-child {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+/* Pull quote — Notion `quote` block renders as <blockquote class="nquote">
+   with Tailwind `border-s-4`. Override to the editorial treatment. */
+.page-article .post-body blockquote.nquote,
+.page-article .post-body blockquote {
+  border: none !important;
+  border-left: 2px solid var(--accent) !important;
+  padding: 16px 24px !important;
+  margin: 32px 0 !important;
+  background: rgb(from var(--ink) r g b / 0.02);
+  font-style: italic;
+  color: var(--ink);
+  font-size: 17px;
+  line-height: 1.5;
+  max-width: 64ch;
+  border-radius: 0 !important;
+}
+.page-article .post-body blockquote.nquote > div,
+.page-article .post-body blockquote > div { padding: 0 !important; }
+.page-article .post-body blockquote.nquote p,
+.page-article .post-body blockquote p { margin: 0 0 12px; }
+.page-article .post-body blockquote.nquote :last-child,
+.page-article .post-body blockquote :last-child { margin-bottom: 0; }
+
+/* Images */
+.page-article .post-body img {
+  max-width: 100%;
+  height: auto;
+  margin: 0;
+  display: block;
+}
+/* Figures are flow blocks. Use auto horizontal margin so the figure
+   stays centered in its container (overrides the mx-auto Notion sets
+   via Tailwind). Vertical margin handles spacing between figures and
+   surrounding prose. Defensive border resets — nothing inside a
+   figure should ever draw a rule under the image. */
+.page-article .post-body figure {
+  margin: 32px auto;
+  border: 0;
+  padding: 0;
+}
+.page-article .post-body figure > div {
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+.page-article .post-body figure > figcaption,
+.page-article .post-body figure > .caption {
+  margin-top: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--dim);
+  letter-spacing: 0.04em;
+  border: 0;
+  padding-top: 0;
+}
+
+/* Notion `callout` content div should expand to fill the callout's
+   available width, otherwise an inner column_list collapses to its
+   natural content width and leaves dead space on the right.
+   We target :last-child rather than :not(:first-child) because the
+   icon is rendered conditionally — when Notion's API returns no icon
+   for the block, the content div becomes the ONLY child, and
+   :not(:first-child) would skip it. :last-child always picks the
+   content div (with or without an icon sibling), and the icon, when
+   present, is :first-child only and keeps its natural width. */
+.page-article .post-body .callout > div:last-child {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/* Column list (Notion `column_list` block).
+   Align columns top-of-row, zero the top-margin of the first block
+   in each column, and tighten figure spacing inside columns so an
+   image-only column anchors flush with its sibling text columns. */
+.page-article .post-body .notion-column-list {
+  align-items: flex-start;
+  margin-top: 0;
+}
+/* Aggressive top-zero on the first child of every column AND its
+   own first descendants — ensures no margin accumulates from a
+   block (figure → div → img) chain that pushes the image down. */
+.page-article .post-body .notion-column > *:first-child,
+.page-article .post-body .notion-column > *:first-child > *:first-child,
+.page-article .post-body .notion-column > *:first-child > *:first-child > *:first-child {
+  margin-top: 0;
+}
+.page-article .post-body .notion-column figure {
+  margin: 0 0 16px;
+}
+.page-article .post-body .notion-column figure > div { margin: 0; }
+.page-article .post-body .notion-column figure:last-child {
+  margin-bottom: 0;
+}
+.page-article .post-body figcaption {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--dim);
+  letter-spacing: 0.04em;
+  margin-top: 8px;
+}
+
+/* Lists */
+.page-article .post-body ul,
+.page-article .post-body ol {
+  margin: 0 0 1.1em;
+  padding-left: 1.4em;
+  max-width: 64ch;
+}
+.page-article .post-body li { margin: 4px 0; line-height: 1.55; }
+
+/* Tight, readable lists inside columns — the categorical grouping
+   pattern (h4 + ul of names) is dense, so reduce per-item spacing
+   and tighten bullet/text gap. */
+.page-article .post-body .notion-column ul,
+.page-article .post-body .notion-column ol {
+  padding-left: 1.2em;
+  margin: 0 0 0.9em;
+}
+.page-article .post-body .notion-column li {
+  margin: 2px 0;
+  line-height: 1.45;
+  font-size: 14.5px;
+  color: var(--ink-2);
+}
+.page-article .post-body .notion-column li::marker {
+  color: var(--dim);
+}
+
+/* Inline links — only underline anchors that contain plain text.
+   Anchors that wrap an image, figure, or block-level structure (e.g.
+   the lightbox link in NImage.astro, link_to_page cards) must NOT
+   get an underline because it draws a horizontal rule under the
+   wrapped block. */
+.page-article .post-body p a,
+.page-article .post-body li a,
+.page-article .post-body h2 a,
+.page-article .post-body h3 a,
+.page-article .post-body td a,
+.page-article .post-body figcaption a,
+.page-article .post-body .caption a {
+  border-bottom: 1px solid currentColor;
+  padding-bottom: 1px;
+  transition: color 160ms ease;
+}
+.page-article .post-body p a:hover,
+.page-article .post-body li a:hover,
+.page-article .post-body h2 a:hover,
+.page-article .post-body h3 a:hover,
+.page-article .post-body td a:hover,
+.page-article .post-body figcaption a:hover,
+.page-article .post-body .caption a:hover { color: var(--accent); }
+/* Anchors that wrap images / block content stay invisible (no
+   underline, no border). */
+.page-article .post-body a:has(img),
+.page-article .post-body a:has(figure) {
+  border-bottom: none;
+  display: block;
+}
+
+/* Tables — Notion `table` blocks become the editorial meta dl when
+   placed at the bottom of an about page. */
+.page-article .post-body table {
+  width: 100%;
+  margin: 56px 0;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  border-top: 1px solid var(--rule);
+}
+.page-article .post-body table td,
+.page-article .post-body table th {
+  padding: 12px 16px 12px 0;
+  border-bottom: 1px solid var(--rule-soft);
+  vertical-align: top;
+  text-align: left;
+}
+.page-article .post-body table td:first-child,
+.page-article .post-body table th:first-child {
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  width: 30%;
+  font-size: 11px;
+}
+
+/* Dividers */
+.page-article .post-body hr {
+  border: none;
+  border-top: 1px solid var(--rule-soft);
+  margin: 48px 0;
+}
+
+/* About-specific tweak: the H1 goes very large (matches mock variant A). */
+body[data-page-slug="about"] .page-title {
+  font-size: clamp(64px, 10vw, 168px);
+}
+
+/* ---------- RESPONSIVE ---------- */
+@media (max-width: 960px) {
+  .page { grid-template-columns: 1fr; }
+  .rail { position: static; height: auto; padding: 24px; border-bottom: 1px solid var(--rule-soft); }
+  .rail-inner { flex-direction: row; gap: 24px; align-items: center; flex-wrap: wrap; }
+  .rail-mark { flex-direction: row; gap: 4px; font-size: 24px; margin: 0; }
+  .rail-nav { flex-direction: row; flex-wrap: wrap; gap: 14px; }
+  .rail-link { grid-template-columns: auto auto; gap: 4px; }
+  .rail-foot { flex-basis: 100%; border-top: none; padding-top: 0; }
+  .main { border-left: none; }
+  .soup-soup, .soup-soup-tall { height: 90vh; min-height: 560px; }
+  .soup-soup .hero-overlay, .soup-soup-tall .hero-overlay { height: 90vh; min-height: 560px; }
+  .works-hybrid { grid-template-columns: 1fr; gap: 32px; }
+  .hybrid-feature { position: static; }
+  .news-row { grid-template-columns: 1fr; gap: 12px; }
+  /* Reset the desktop column anchor so the thumbnail flows in source
+   * order at the top via `order: -1` instead of being pinned to a
+   * non-existent column 4. */
+  .news-thumb { grid-column: auto; width: 100%; height: 200px; justify-self: stretch; order: -1; }
+  .news-meta { flex-direction: row; justify-content: space-between; }
+  .site-foot { grid-template-columns: 1fr; gap: 32px; }
+  .site-foot-mark { writing-mode: horizontal-tb; }
+  .site-foot-cols { grid-template-columns: 1fr; }
+}

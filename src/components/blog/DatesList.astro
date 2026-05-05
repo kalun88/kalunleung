@@ -1,0 +1,60 @@
+---
+import type { Gig } from "@/lib/interfaces";
+
+/**
+ * Homepage "Upcoming" dates strip.
+ *
+ * Each row mirrors the mock:
+ *   2026·05·22   Tonalteatret · Boiler Room                COPENHAGEN, DK
+ *   2026·09·09   Ambient Parade · No. 04                   TIOHTIÀ:KE
+ *
+ * Reads from a Gig[] (already filtered/sorted upstream — this component is
+ * presentation-only). For residencies the date column shows a YYYY·MM·DD
+ * range "→" the end date.
+ */
+
+interface Props {
+	gigs: Gig[];
+}
+
+const { gigs } = Astro.props;
+
+function formatDate(dateStr: string): string {
+	if (!dateStr) return "";
+	const d = new Date(dateStr);
+	if (Number.isNaN(d.getTime())) return "";
+	const yyyy = d.getFullYear();
+	const mm = String(d.getMonth() + 1).padStart(2, "0");
+	const dd = String(d.getDate()).padStart(2, "0");
+	return `${yyyy}·${mm}·${dd}`;
+}
+---
+
+<ol class="dates-list" role="list">
+	{
+		gigs.map((gig) => {
+			const start = formatDate(gig.Date);
+			const end = gig.DateEnd ? formatDate(gig.DateEnd) : "";
+			const dateCol = end ? `${start} → ${end}` : start;
+			// Title strip: "Venue · Title" if both, else just whichever is set.
+			const titleParts = [gig.Venue, gig.Title].filter(Boolean);
+			const title = titleParts.join(" · ");
+			return (
+				<li>
+					<span class="dates-date">{dateCol}</span>
+					<div>
+						{gig.EventLink ? (
+							<a class="dates-title" href={gig.EventLink} target="_blank" rel="noopener noreferrer">
+								{title}
+							</a>
+						) : (
+							<span class="dates-title">{title}</span>
+						)}
+						{gig.With && <span class="dates-with">{gig.With}</span>}
+					</div>
+					<span class="dates-loc">{gig.City}</span>
+				</li>
+			);
+		})
+	}
+</ol>

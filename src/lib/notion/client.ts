@@ -1555,10 +1555,54 @@ function _buildPost(pageObject: responses.PageObject): Post {
 			? prop["Last Updated Date"]?.formula.date.start
 			: "",
 		Pinned: prop.Pinned && prop.Pinned.checkbox === true ? true : false,
+		Highlight: prop.Highlight && prop.Highlight.checkbox === true ? true : false,
+		// Per-section News-block promotion flag. Read from the
+		// "Show on Homepage News" checkbox on the CMS DB; only news rows
+		// will normally have this ticked but the field is universal.
+		ShowOnHomepageNews:
+			prop["Show on Homepage News"]?.checkbox === true ? true : false,
+		// Dedicated Highlights ordering — separate from `Rank` because
+		// that field is reused by nav-page ordering. Number, optional;
+		// missing/null → +Infinity so the row sinks to the end of the
+		// Highlights list and tiebreaks on Date desc.
+		HighlightRank: typeof prop["Highlight Rank"]?.number === "number"
+			? prop["Highlight Rank"].number
+			: Number.POSITIVE_INFINITY,
 		BlueSkyPostLink:
 			prop["Bluesky Post Link"] && prop["Bluesky Post Link"].url
 				? prop["Bluesky Post Link"].url
 				: "",
+		Role:
+			prop.Role?.rich_text && prop.Role.rich_text.length > 0
+				? prop.Role.rich_text.map((richText) => richText.plain_text).join("")
+				: "",
+		Status:
+			prop.Status?.rich_text && prop.Status.rich_text.length > 0
+				? prop.Status.rich_text.map((richText) => richText.plain_text).join("")
+				: "",
+		HeroQuote:
+			prop.HeroQuote?.rich_text && prop.HeroQuote.rich_text.length > 0
+				? prop.HeroQuote.rich_text.map((richText) => richText.plain_text).join("")
+				: "",
+		HeroQuoteCitation:
+			prop.HeroQuoteCitation?.rich_text && prop.HeroQuoteCitation.rich_text.length > 0
+				? prop.HeroQuoteCitation.rich_text.map((richText) => richText.plain_text).join("")
+				: "",
+		// SubtitleRow1/2/3 — preserve rich text annotations so the hero can
+		// honour Notion's bold/italic/underline/strikethrough/code/color
+		// inline formatting on each row independently.
+		SubtitleRow1:
+			prop.SubtitleRow1?.rich_text && prop.SubtitleRow1.rich_text.length > 0
+				? prop.SubtitleRow1.rich_text.map((rt) => _buildRichText(rt))
+				: [],
+		SubtitleRow2:
+			prop.SubtitleRow2?.rich_text && prop.SubtitleRow2.rich_text.length > 0
+				? prop.SubtitleRow2.rich_text.map((rt) => _buildRichText(rt))
+				: [],
+		SubtitleRow3:
+			prop.SubtitleRow3?.rich_text && prop.SubtitleRow3.rich_text.length > 0
+				? prop.SubtitleRow3.rich_text.map((rt) => _buildRichText(rt))
+				: [],
 	};
 	return post;
 }
@@ -1793,6 +1837,42 @@ function _buildGig(pageObject: responses.PageObject): Gig {
 		locationStr = prop.Location.multi_select[0]?.name || "";
 	}
 
+	// FeaturedImage parsing — mirrors the Post version. The Dates DB has a
+	// `FeaturedImage` files property; uploaded files get a stable
+	// /notion/{pageId}/{filename}.webp OptimizedUrl so subsequent builds
+	// can read the cached image instead of re-fetching the expiring URL.
+	let featuredImage: FileObject | null = null;
+	let featuredImages: FileObject[] = [];
+	if (prop.FeaturedImage?.files && prop.FeaturedImage.files.length > 0) {
+		featuredImages = prop.FeaturedImage.files
+			.map((file) => {
+				if (file.external) {
+					return { Type: "external", Url: file.external.url } as FileObject;
+				}
+				if (file.file && file.file.url) {
+					const url = new URL(file.file.url);
+					const segments = url.pathname.split("/");
+					const lastSegment = segments.slice(-1)[0];
+					const filename = lastSegment ? decodeURIComponent(lastSegment) : "image";
+					let optimizedUrl = file.file.url;
+					if (isConvImageType(file.file.url) && OPTIMIZE_IMAGES) {
+						const extIndex = filename.lastIndexOf(".");
+						const nameWithoutExt = extIndex !== -1 ? filename.substring(0, extIndex) : filename;
+						optimizedUrl = `/notion/${pageObject.id}/${nameWithoutExt}.webp`;
+					}
+					return {
+						Type: "file",
+						Url: file.file.url,
+						OptimizedUrl: optimizedUrl,
+						ExpiryTime: file.file.expiry_time,
+					} as FileObject;
+				}
+				return null;
+			})
+			.filter((img): img is FileObject => img !== null);
+		featuredImage = featuredImages[0] || null;
+	}
+
 	return {
 		PageId: pageObject.id,
 		Title: prop.Title?.title ? prop.Title.title.map((richText) => richText.plain_text).join("") : "",
@@ -1804,6 +1884,50 @@ function _buildGig(pageObject: responses.PageObject): Gig {
 		EventLink: prop.URL?.url || "",
 		City: locationStr,
 		Residency: prop.Residency?.checkbox || false,
+		Highlight: prop.Highlight?.checkbox === true ? true : false,
+		HighlightRank: typeof prop["Highlight Rank"]?.number === "number"
+			? prop["Highlight Rank"].number
+			: Number.POSITIVE_INFINITY,
+		FeaturedImage: featuredImage,
+		FeaturedImages: featuredImages,
 		LastUpdatedTimeStamp: pageObject.last_edited_time ? new Date(pageObject.last_edited_time) : new Date(),
 	};
+}
+
+// Parallels processFeaturedImages but for Gig.FeaturedImages. Uploaded
+// (non-external) images get downloaded into /public/notion/{pageId}/… so
+// the optimized .webp paths produced by _buildGig resolve at runtime.
+export async function processGigFeaturedImages(gigs: Gig[]) {
+	const results = await Promise.allSettled(
+		gigs.flatMap(async (gig) => {
+			if (!gig.FeaturedImages || gig.FeaturedImages.length === 0) {
+				return [];
+			}
+			return Promise.all(
+				gig.FeaturedImages.map(async (featuredImage, index) => {
+					if (featuredImage.Type !== "file") {
+						return null;
+					}
+					const url = new URL(featuredImage.Url);
+					const stableFilepath = generateStableFilePath(gig.PageId, url, false);
+					const stableWebpPath = generateStableFilePath(gig.PageId, url, true);
+					const shouldDownload = LAST_BUILD_TIME
+						? gig.LastUpdatedTimeStamp > LAST_BUILD_TIME || !fs.existsSync(stableWebpPath)
+						: true;
+					if (shouldDownload) {
+						console.log(
+							`Downloading gig featured image ${index + 1} for "${gig.Title}": ${url.pathname.split("/").slice(-2).join("/")}`,
+						);
+						return downloadFile(url, true, false, stableFilepath, stableWebpPath);
+					}
+					return null;
+				}),
+			);
+		}),
+	);
+	results.forEach((result) => {
+		if (result.status === "rejected") {
+			console.error("Failed to process gig featured image:", result.reason);
+		}
+	});
 }

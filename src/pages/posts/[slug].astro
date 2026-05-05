@@ -152,13 +152,9 @@ if (postFound) {
 	postFound && resetFirstImage() && setTrackCurrentPageId(post.PageId) && (
 		<PostLayout post={post} headings={headings} shouldUseCache={shouldUseCache}>
 			{shouldUseCache && cachedHtml ? (
-				<div
-					class="post-body max-w-none sm:max-w-[90vw] lg:max-w-[85vw] xl:max-w-[1000px] print:max-w-full"
-					data-html-type="cached"
-					set:html={cachedHtml}
-				/>
+				<div class="post-body" data-html-type="cached" set:html={cachedHtml} />
 			) : (
-				<div class="post-body max-w-none sm:max-w-[90vw] lg:max-w-[85vw] xl:max-w-[1000px] print:max-w-full" data-html-type="new">
+				<div class="post-body" data-html-type="new">
 					<NotionBlocks blocks={blocks} />
 				</div>
 			)}

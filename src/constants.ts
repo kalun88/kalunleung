@@ -136,6 +136,26 @@ export const REFERENCES = key_value_from_json["references"] || null;
 
 export const RECENT_POSTS_ON_HOME_PAGE = key_value_from_json["recent-posts-on-home-page"] || false;
 export const HOMEPAGE_COLLECTIONS = key_value_from_json["homepage-collections"] || {};
+// Cross-collection homepage block. Pulls anything with Highlight=true from
+// both the CMS DB (any collection) and the standalone Dates DB, ordered by
+// Rank ascending (unranked last) then Date descending. Optionally sliced
+// by `max-items` — omit the key to show every highlighted item (the
+// curator self-limits via Notion). Renders with the projects-hybrid
+// layout (sticky feature panel + dispatch list) — visually identical to
+// the previous Selected Works block, just fed by a wider source set.
+export const HOMEPAGE_HIGHLIGHTS = key_value_from_json["homepage-highlights"] || {
+	enabled: false,
+	title: "Highlights",
+	glyph: "▒",
+	"display-style": "projects-hybrid",
+};
+// Optional homepage strip that promotes upcoming gigs from the Gigs DB.
+// Filtered to Date >= today, sorted ascending, sliced by max-items.
+export const HOMEPAGE_UPCOMING_DATES = key_value_from_json["homepage-upcoming-dates"] || {
+	enabled: false,
+	title: "Upcoming",
+	"max-items": 4,
+};
 
 export const SOCIALS = key_value_from_json["socials"] || {};
 

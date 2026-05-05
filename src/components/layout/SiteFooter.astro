@@ -1,0 +1,123 @@
+---
+import { SOCIALS, HOME_PAGE_SLUG } from "@/constants";
+import { getAllPages } from "@/lib/notion/client";
+import { getMenu } from "@/utils";
+
+/**
+ * Redesigned site footer (mock §):
+ *   [vertical 梁家綸 mark] [§ INDEX | § ELSEWHERE | § COLOPHON]
+ *
+ * - INDEX     ← nav-order (each link with its glyph + label)
+ * - ELSEWHERE ← socials.* (email / instagram / newsletter)
+ * - COLOPHON  ← static copy + year
+ */
+
+// Pull Status from the home page row in case we want to surface it later.
+// Currently unused in the mock footer, but keep the lookup so we can wire it
+// in without a refactor.
+let statusLine = "";
+try {
+	const pages = await getAllPages();
+	const home = pages.find((p) => p.Slug === HOME_PAGE_SLUG);
+	statusLine = home?.Status || "";
+} catch {
+	statusLine = "";
+}
+
+const email = SOCIALS?.email || "";
+const instagram = SOCIALS?.instagram || "";
+const newsletter = SOCIALS?.newsletter || "";
+
+const instagramHref = instagram
+	? instagram.startsWith("http")
+		? instagram
+		: `https://instagram.com/${instagram}`
+	: "";
+// Display @handle when the value is a username (no protocol prefix).
+const instagramHandle = instagram && !instagram.startsWith("http") ? `@${instagram}` : instagram;
+
+// Pull the same nav as the rail, so footer INDEX stays in sync with site nav.
+const navLinks = await getMenu();
+
+function splitNavTitle(title: string): { glyph: string; label: string } {
+	if (title.includes("\n")) {
+		const i = title.indexOf("\n");
+		return { glyph: title.substring(0, i), label: title.substring(i + 1) };
+	}
+	return { glyph: "", label: title };
+}
+
+const buildYear = new Date().getFullYear();
+---
+
+<footer class="site-foot" id="main-footer">
+	<div class="site-foot-mark" aria-hidden="true">梁家綸</div>
+
+	<div class="site-foot-cols">
+		<div>
+			<h4>§ INDEX</h4>
+			<ul>
+				{navLinks.map((link) => {
+					const { glyph, label } = splitNavTitle(link.title);
+					return (
+						<li>
+							<a
+								href={link.path}
+								target={link.isExternal ? "_blank" : undefined}
+								rel={link.isExternal ? "noopener noreferrer" : undefined}
+								data-astro-prefetch={link.isExternal ? undefined : true}
+							>
+								{glyph && <span aria-hidden="true">{glyph}&nbsp;</span>}
+								{label}
+							</a>
+						</li>
+					);
+				})}
+			</ul>
+		</div>
+
+		<div>
+			<h4>§ ELSEWHERE</h4>
+			<ul>
+				{email && (
+					<li>
+						<a href={`mailto:${email}`} rel="me">
+							<span aria-hidden="true">▰&nbsp;</span>email
+						</a>
+					</li>
+				)}
+				{instagramHref && (
+					<li>
+						<a href={instagramHref} target="_blank" rel="me noopener noreferrer">
+							<span aria-hidden="true">◗&nbsp;</span>instagram&nbsp;{instagramHandle}
+						</a>
+					</li>
+				)}
+				{newsletter && (
+					<li>
+						<a
+							href={newsletter}
+							target="_blank"
+							rel="noopener noreferrer"
+							onclick="window.open(this.href, 'newsletter', 'width=600,height=1100,scrollbars=yes,resizable=yes'); return false;"
+						>
+							<span aria-hidden="true">☗&nbsp;</span>newsletter
+						</a>
+					</li>
+				)}
+			</ul>
+		</div>
+
+		<div>
+			<h4>§ COLOPHON</h4>
+			<p class="site-foot-colo">
+				The hero is a particle field of the artist's own glyph alphabet.
+				Click to commit · move to push · hold space to erase.
+				On touch, hold to commit.
+			</p>
+			<p class="site-foot-colo">
+				© {buildYear} Kalun Leung · CC BY-NC 4.0
+			</p>
+		</div>
+	</div>
+</footer>

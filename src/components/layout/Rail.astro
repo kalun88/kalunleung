@@ -1,0 +1,77 @@
+---
+import { getMenu } from "@/utils";
+import { getNavLink } from "@/lib/blog-helpers";
+
+/**
+ * Vertical left rail nav.
+ * - Top: stacked CJK brand mark (also a link to /). Comes from the first
+ *   nav-order entry whose path is "/" (the home page).
+ * - Middle: rail-link rows. Each entry's `title` is "glyph\nlabel" — the
+ *   glyph (first line) is a Block Element char (U+2580–U+259F) per
+ *   constants-config.json, the label (second line) is plain text.
+ * - Bottom: static role tagline + locale.
+ */
+const menuLinks = await getMenu();
+
+const homeIndex = menuLinks.findIndex((l) => l.path === getNavLink("/"));
+const homeLink = homeIndex >= 0 ? menuLinks[homeIndex] : null;
+const navLinks = menuLinks.filter((_, i) => i !== homeIndex);
+
+// Split a "glyph\nlabel" title into [glyph, label]. Falls back to
+// [title, ""] if there's no newline.
+function splitNavTitle(title: string): { glyph: string; label: string } {
+	if (title.includes("\n")) {
+		const i = title.indexOf("\n");
+		return { glyph: title.substring(0, i), label: title.substring(i + 1) };
+	}
+	return { glyph: title, label: "" };
+}
+
+const url = new URL(Astro.request.url);
+
+// Rail-mark: split brand title on \n into one char per line. e.g. "梁\n家\n綸"
+const markChars = homeLink ? homeLink.title.split("\n") : [];
+---
+
+<aside class="rail" aria-label="Site rail">
+	<div class="rail-inner">
+		{
+			homeLink && (
+				<a class="rail-mark" href={homeLink.path} aria-label="Home" data-astro-prefetch>
+					{markChars.map((c) => (
+						<span aria-hidden={markChars.length > 1}>{c}</span>
+					))}
+				</a>
+			)
+		}
+
+		<nav class="rail-nav" aria-label="Main">
+			{
+				navLinks.map((link) => {
+					const { glyph, label } = splitNavTitle(link.title);
+					const isCurrent = url.pathname === link.path;
+					return (
+						<a
+							href={link.path}
+							class="rail-link"
+							aria-current={isCurrent ? "page" : undefined}
+							target={link.isExternal ? "_blank" : undefined}
+							rel={link.isExternal ? "noopener noreferrer" : undefined}
+							data-astro-prefetch={link.isExternal ? undefined : true}
+						>
+							<span class="rail-glyph" aria-hidden="true">{glyph}</span>
+							<span class="rail-label">{label || link.title}</span>
+						</a>
+					);
+				})
+			}
+		</nav>
+
+		<div class="rail-foot">
+			<div class="rail-meta">Trombonist</div>
+			<div class="rail-meta">Composer</div>
+			<div class="rail-meta">Instrument Developer</div>
+			<div class="rail-meta rail-meta-dim">Tiohtià:ke / Montréal</div>
+		</div>
+	</div>
+</aside>

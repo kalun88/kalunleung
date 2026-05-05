@@ -1,17 +1,63 @@
 ---
 import PageLayout from "@/layouts/Base.astro";
-import { getAllPages, getAllPosts, getPostContentByPostId, processFileBlocks, processCoverImages, processFeaturedImages } from "@/lib/notion/client";
+import { getAllPages, getAllPosts, getAllGigs, getPostContentByPostId, processFileBlocks, processCoverImages, processFeaturedImages, processGigFeaturedImages } from "@/lib/notion/client";
 import { extractTargetBlocks, getNavLink, getReferencesInPage, resetCurrentHeadings, resetFirstImage, setCurrentHeadings, setTrackCurrentPageId } from "@/lib/blog-helpers";
 import NotionBlocks from "@/components/NotionBlocks.astro";
-import type { Post } from "@/lib/interfaces";
+import type { Post, Gig } from "@/lib/interfaces";
 import { siteInfo } from "@/siteInfo";
-import { FULL_PREVIEW_COLLECTIONS, HIDE_UNDERSCORE_SLUGS_IN_LISTS, HOME_PAGE_SLUG, RECENT_POSTS_ON_HOME_PAGE, HOMEPAGE_COLLECTIONS, LAST_BUILD_TIME, BUILD_FOLDER_PATHS } from "@/constants";
+import { FULL_PREVIEW_COLLECTIONS, HIDE_UNDERSCORE_SLUGS_IN_LISTS, HOME_PAGE_SLUG, RECENT_POSTS_ON_HOME_PAGE, HOMEPAGE_COLLECTIONS, HOMEPAGE_HIGHLIGHTS, HOMEPAGE_UPCOMING_DATES, NAV_ORDER, LAST_BUILD_TIME, BUILD_FOLDER_PATHS } from "@/constants";
 import PostPreview from "@/components/blog/PostPreview.astro";
 import PostPreviewMedium from "@/components/blog/PostPreviewMedium.astro";
 import PostPreviewWide from "@/components/blog/PostPreviewWide.astro";
+import SectionHeader from "@/components/blog/SectionHeader.astro";
+import ProjectsHybrid from "@/components/blog/ProjectsHybrid.astro";
+import NewsList from "@/components/blog/NewsList.astro";
+import DatesList from "@/components/blog/DatesList.astro";
+import AlphabetSoupHero from "@/components/home/AlphabetSoupHero.astro";
 import Icon from "@/components/Icon.astro";
 import { buildHeadings, slugify } from "@/utils";
+import { buildHybridItemsFromPosts, buildHybridItemsFromHighlights, type HybridItem } from "@/lib/hybrid-items";
 import TOC from "@/components/blog/TOC.astro";
+
+// Look up a collection's glyph in nav-order so the section header matches
+// the rail. nav-order titles look like "▙\nportfolio"; we want the first
+// line. Falls back to "" so the header still renders without a glyph.
+function navGlyphForCollection(collectionName: string): string {
+	const item = (NAV_ORDER as { type: string; name?: string; title?: string }[])
+		.find((n) => n.type === "collection" && n.name === collectionName);
+	if (!item || !item.title) return "";
+	const i = item.title.indexOf("\n");
+	return i === -1 ? item.title : item.title.substring(0, i);
+}
+
+// Eyebrow glyph for a static page (e.g. /about → "▁"). Returns "" for the
+// home page (its title is the brand mark, not an eyebrow glyph) and for
+// pages without a single Block Element glyph.
+function pageEyebrowGlyph(slug: string): string {
+	if (slug === HOME_PAGE_SLUG) return "";
+	const item = (NAV_ORDER as { type: string; slug?: string; title?: string }[])
+		.find((n) => n.type === "page" && n.slug === slug);
+	if (!item || !item.title) return "";
+	const i = item.title.indexOf("\n");
+	const candidate = i === -1 ? item.title : item.title.substring(0, i);
+	// Only single Block Element chars qualify (U+2580–U+259F).
+	if (candidate.length !== 1) return "";
+	const code = candidate.charCodeAt(0);
+	return code >= 0x2580 && code <= 0x259f ? candidate : "";
+}
+
+// Eyebrow label — pulls the lowercase nav label (e.g. "about") rather
+// than the page title, so the eyebrow stays terse even when the title
+// is long. Falls back to page.Title.
+function pageEyebrowLabel(slug: string, fallback: string): string {
+	if (slug === HOME_PAGE_SLUG) return "";
+	const item = (NAV_ORDER as { type: string; slug?: string; title?: string }[])
+		.find((n) => n.type === "page" && n.slug === slug);
+	if (!item || !item.title) return fallback;
+	const i = item.title.indexOf("\n");
+	if (i === -1) return fallback;
+	return item.title.substring(i + 1) || fallback;
+}
 import fs from "fs/promises";
 import path from "path";
 import superjson from "superjson";
@@ -145,6 +191,27 @@ if (pageFound) {
 
 let recent_posts = null;
 let homepage_collections = {};
+let upcoming_gigs: Gig[] = [];
+// Highlights — cross-collection homepage block (replaces the previous
+// portfolio-only "Selected works" block). Pre-built HybridItem
+// descriptors so ProjectsHybrid can render mixed posts + gigs from a
+// single uniform array. Stays empty unless we're on the home page and
+// homepage-highlights is enabled in config.
+let highlight_items: HybridItem[] = [];
+
+// Cache the gigs fetch — both the Highlights block and the Upcoming
+// Dates block need it. One request, two consumers.
+let all_gigs_cache: Gig[] | null = null;
+async function getAllGigsOnce(): Promise<Gig[]> {
+		if (all_gigs_cache !== null) return all_gigs_cache;
+		try {
+				all_gigs_cache = await getAllGigs();
+		} catch (e) {
+				console.warn("getAllGigsOnce: failed to fetch gigs", e);
+				all_gigs_cache = [];
+		}
+		return all_gigs_cache;
+}
 
 // Legacy recent posts support
 if (pageFound && page.Slug === HOME_PAGE_SLUG && RECENT_POSTS_ON_HOME_PAGE) {
@@ -167,22 +234,41 @@ if (pageFound && page.Slug === HOME_PAGE_SLUG && HOMEPAGE_COLLECTIONS && Object.
 		for (const [collectionName, config] of Object.entries(HOMEPAGE_COLLECTIONS)) {
 				if (config.enabled) {
 						let collection_posts = all_posts.filter((post) => post.Collection === collectionName);
-						
+
 						// Apply underscore filter
 						if (HIDE_UNDERSCORE_SLUGS_IN_LISTS) {
 								collection_posts = collection_posts.filter((post) => !post.Slug.startsWith("_"));
 						}
-						
-						// Filter by pinned status if use-pinned is true
-						if (config["use-pinned"]) {
-								collection_posts = collection_posts.filter((post) => post.Pinned);
+
+						// Per-section promotion filters. Each homepage-collections
+						// block can opt into one of these checkbox-driven gates;
+						// they're additive (a post must satisfy every enabled
+						// gate to render in that block).
+						//
+						//   use-show-on-homepage-news → post.ShowOnHomepageNews
+						//     (the News block uses this so news promotion is
+						//     decoupled from the cross-collection Highlight flag)
+						//   use-highlight → post.Highlight
+						//     (cross-collection — same flag the Highlights block
+						//     reads; useful if you want a per-collection block to
+						//     mirror Highlight selections)
+						//   use-featured  → post.Highlight (legacy alias kept so
+						//     pre-rename configs keep working)
+						//
+						// Pinned still controls collection-page ordering and is
+						// orthogonal to all of these.
+						if (config["use-show-on-homepage-news"]) {
+								collection_posts = collection_posts.filter((post) => post.ShowOnHomepageNews);
 						}
-						
+						if (config["use-highlight"] || config["use-featured"]) {
+								collection_posts = collection_posts.filter((post) => post.Highlight);
+						}
+
 						// Limit number of items
 						if (config["max-items"]) {
 								collection_posts = collection_posts.slice(0, config["max-items"]);
 						}
-						
+
 						// Store the collection data
 						homepage_collections[collectionName] = {
 								posts: collection_posts,
@@ -201,7 +287,7 @@ if (pageFound && page.Slug === HOME_PAGE_SLUG && HOMEPAGE_COLLECTIONS && Object.
 								});
 						}
 				});
-				
+
 				// Legacy recent posts heading
 				if (recent_posts && recent_posts.length > 0) {
 						headings.push({
@@ -210,6 +296,80 @@ if (pageFound && page.Slug === HOME_PAGE_SLUG && HOMEPAGE_COLLECTIONS && Object.
 								depth: 1,
 						});
 				}
+		}
+}
+
+// Cross-collection Highlights block. Pulls anything with Highlight=true
+// from the CMS DB (any collection) and from the standalone Dates DB,
+// orders them by Rank ascending (unranked last) with Date desc as
+// tiebreaker, slices to max-items, and renders with ProjectsHybrid.
+// Past + future dates are both eligible (Highlight is curatorial, not a
+// calendar filter). Configured via constants-config.json →
+// homepage-highlights.
+if (pageFound && page.Slug === HOME_PAGE_SLUG && HOMEPAGE_HIGHLIGHTS?.enabled) {
+		try {
+				const all_posts = await getAllPosts();
+				let highlight_posts = all_posts.filter((p) => p.Highlight === true);
+				if (HIDE_UNDERSCORE_SLUGS_IN_LISTS) {
+						highlight_posts = highlight_posts.filter((p) => !p.Slug.startsWith("_"));
+				}
+				// Make sure post images are processed even if homepage-collections
+				// didn't run (e.g. if the user empties homepage-collections).
+				await processCoverImages(highlight_posts);
+				await processFeaturedImages(highlight_posts);
+
+				const all_gigs = await getAllGigsOnce();
+				const highlight_gigs = all_gigs.filter((g) => g.Highlight === true);
+				await processGigFeaturedImages(highlight_gigs);
+
+				// max-items is optional in the highlights config — when omitted
+				// the builder renders every highlighted item (you self-limit
+				// via Notion). When set, it slices to that count.
+				const max = HOMEPAGE_HIGHLIGHTS["max-items"];
+				highlight_items = buildHybridItemsFromHighlights(
+						highlight_posts,
+						highlight_gigs,
+						max,
+						getNavLink("/collections/dates/"),
+				);
+
+				if (headings && highlight_items.length > 0) {
+						headings.push({
+								text: HOMEPAGE_HIGHLIGHTS.title || "Highlights",
+								slug: "auto-highlights",
+								depth: 1,
+						});
+				}
+		} catch (e) {
+				console.warn("homepage-highlights: failed to build highlight items", e);
+				highlight_items = [];
+		}
+}
+
+// Promote upcoming gigs from the Gigs DB to the homepage. Filter to gigs
+// whose Date (or DateEnd, for residencies) is today or later, sort
+// ascending, and slice by max-items. Configured via
+// constants-config.json → homepage-upcoming-dates.
+if (pageFound && page.Slug === HOME_PAGE_SLUG && HOMEPAGE_UPCOMING_DATES?.enabled) {
+		try {
+				const allGigs = await getAllGigsOnce();
+				const todayMs = new Date().setHours(0, 0, 0, 0);
+				const upcoming = allGigs.filter((g) => {
+						const ref = g.DateEnd || g.Date;
+						if (!ref) return false;
+						const t = new Date(ref).getTime();
+						return !Number.isNaN(t) && t >= todayMs;
+				});
+				upcoming.sort((a, b) => {
+						const ta = new Date(a.Date).getTime();
+						const tb = new Date(b.Date).getTime();
+						return ta - tb;
+				});
+				const max = HOMEPAGE_UPCOMING_DATES["max-items"] ?? 4;
+				upcoming_gigs = upcoming.slice(0, max);
+		} catch (e) {
+				console.warn("homepage-upcoming-dates: failed to fetch gigs", e);
+				upcoming_gigs = [];
 		}
 }
 ---
@@ -222,10 +382,36 @@ if (pageFound && page.Slug === HOME_PAGE_SLUG && HOMEPAGE_COLLECTIONS && Object.
 						ogImage: `/og-image/${page.Slug}.png`,
 				}}
 				bodyClass={page.Slug === HOME_PAGE_SLUG ? 'alphabet-soup-hero' : ''}
+				pageSlug={page.Slug}
 		>
-				{/* Main content wrapper */}
-				<div class={`${page.Slug === HOME_PAGE_SLUG ? 'relative z-10' : ''} max-w-none sm:max-w-[90vw] lg:max-w-[85vw] xl:max-w-[1100px] sm:ml-8 print:ml-0 print:max-w-full`}>
-						<article class="break-words" data-pagefind-body>
+				{/* Soup hero on the home page only. Reads SubtitleRow1/2/3 +
+				   Status from the home page row in Notion. Each row is its
+				   own rich-text property, so inline Notion formatting
+				   (bold/italic/underline/strikethrough/code/color) is
+				   honoured per row. Empty rows are skipped. */}
+				{page.Slug === HOME_PAGE_SLUG && (
+					<AlphabetSoupHero
+						row1={page.SubtitleRow1 || []}
+						row2={page.SubtitleRow2 || []}
+						row3={page.SubtitleRow3 || []}
+						status={page.Status || ""}
+						author={(siteInfo as { author?: string }).author ?? siteInfo.title}
+						updated={page.LastUpdatedDate}
+						heroQuote={page.HeroQuote || ""}
+						heroQuoteCitation={page.HeroQuoteCitation || ""}
+					/>
+				)}
+
+				{/* Main content wrapper — homepage uses the .block grid (full-width
+				    inside .main, padded section, bottom border). Non-home pages
+				    keep the legacy Tailwind max-width wrapper. The article on the
+				    home page only renders if the Notion body has content; that
+				    avoids an empty padded block between the hero and Selected
+				    Works when the home row's body is empty. */}
+				{page.Slug === HOME_PAGE_SLUG ? (
+					(blocks && blocks.length > 0) || (shouldUseCache && cachedHtml) ? (
+						<div class="cwk-section">
+							<article class="break-words" data-pagefind-body>
 								{shouldUseCache && cachedHtml ? (
 										<div class="post-body" data-html-type="cached" set:html={cachedHtml}></div>
 								) : (
@@ -233,21 +419,110 @@ if (pageFound && page.Slug === HOME_PAGE_SLUG && HOMEPAGE_COLLECTIONS && Object.
 												<NotionBlocks blocks={blocks} />
 										</div>
 								)}
-								{/* Table of Contents disabled - uncomment line below to re-enable */}
-								{/* {headings && !!headings.length && <TOC headings={headings} />} */}
-						</article>
-				</div>
-				{/* New Granular Homepage Collections */}
+							</article>
+						</div>
+					) : null
+				) : (
+					<article class="page-article break-words" data-pagefind-body>
+							{/* Editorial header: eyebrow (glyph + nav label) + page title. */}
+							{pageEyebrowGlyph(page.Slug) && (
+								<div class="page-eyebrow">
+									<span class="glyph" aria-hidden="true">{pageEyebrowGlyph(page.Slug)}</span>
+									{pageEyebrowLabel(page.Slug, page.Title)}
+								</div>
+							)}
+							<h1 class="page-title">{page.Title}</h1>
+							{shouldUseCache && cachedHtml ? (
+									<div class="post-body" data-html-type="cached" set:html={cachedHtml}></div>
+							) : (
+									<div class="post-body" data-html-type="new">
+											<NotionBlocks blocks={blocks} />
+									</div>
+							)}
+							{/* Table of Contents disabled - uncomment line below to re-enable */}
+							{/* {headings && !!headings.length && <TOC headings={headings} />} */}
+					</article>
+				)}
+				{/* Highlights — cross-collection homepage block. Replaces the
+				    previous portfolio-only "Selected Works" block. Pulls
+				    Highlight-flagged posts from any CMS collection plus
+				    Highlight-flagged gigs from the standalone Dates DB and
+				    renders them in the same projects-hybrid layout. Built
+				    in the script section so the template just iterates the
+				    pre-resolved HybridItem[] descriptors. */}
+				{page.Slug === HOME_PAGE_SLUG && highlight_items.length > 0 && (
+					<div class="cwk-section">
+						<SectionHeader
+							glyph={(HOMEPAGE_HIGHLIGHTS as { glyph?: string }).glyph || "▒"}
+							title={HOMEPAGE_HIGHLIGHTS.title || "Highlights"}
+							count={highlight_items.length}
+							countFormat="n-equals"
+							id="auto-highlights"
+						/>
+						<section aria-label={`${HOMEPAGE_HIGHLIGHTS.title || "Highlights"} list`}>
+							<ProjectsHybrid items={highlight_items} />
+						</section>
+					</div>
+				)}
+
+				{/* New Granular Homepage Collections — each section gets its own
+				    .block (96px vertical padding, bottom border). */}
 				{Object.entries(homepage_collections).map(([collectionName, data]) => (
 					data.posts && data.posts.length > 0 && (
-										<div key={collectionName} class={`${page.Slug === HOME_PAGE_SLUG ? 'relative z-10' : ''} max-w-none sm:max-w-[90vw] lg:max-w-[85vw] xl:max-w-[1100px] sm:ml-8 print:ml-0 print:max-w-full`}>
-							<a href={`#auto-${collectionName.toLowerCase().replace(/[^a-z0-9]/g, '-')}`} id={`auto-${collectionName.toLowerCase().replace(/[^a-z0-9]/g, '-')}`} class="inline" onclick="var fullUrl = `${window.location.origin}${window.location.pathname}#${id}`; navigator.clipboard.writeText(fullUrl);">
-								<h2 class="mb-4 mt-8 text-xl font-semibold hasId">
-									{data.config.title}
-								</h2>
-							</a>
+										<div key={collectionName} class="cwk-section">
+							{/* Redesigned styles use SectionHeader (block-mark + count + more
+							    link). Legacy styles keep their plain h2 above. */}
+							{data.config['display-style'] === 'projects-hybrid' || data.config['display-style'] === 'news-list' ? (
+								(() => {
+									// Compute year range from post.Date so the projects header
+									// can show "N=03 · 2023–2025". Skips pages with no Date.
+									const years = data.posts
+										.map((p) => (p.Date ? new Date(p.Date).getFullYear() : null))
+										.filter((y): y is number => typeof y === "number" && !Number.isNaN(y));
+									const minYear = years.length ? Math.min(...years) : null;
+									const maxYear = years.length ? Math.max(...years) : null;
+									const dateRange =
+										minYear && maxYear
+											? minYear === maxYear
+												? String(minYear)
+												: `${minYear}–${maxYear}`
+											: undefined;
+
+									const isNews = data.config['display-style'] === 'news-list';
+									// Cleaned collection name without leading glyph (e.g. "▙ portfolio" → "portfolio")
+									const cleanName = collectionName.replace(/^\W+\s*/, '').toUpperCase();
+									return (
+										<SectionHeader
+											glyph={navGlyphForCollection(collectionName)}
+											title={data.config.title}
+											count={data.posts.length}
+											moreHref={getNavLink(`/collections/${slugify(collectionName)}/`)}
+											moreLabel={`ALL ${cleanName}`}
+											dateRange={isNews ? undefined : dateRange}
+											countFormat={isNews ? "entries" : "n-equals"}
+											id={`auto-${collectionName.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
+										/>
+									);
+								})()
+							) : (
+								<a href={`#auto-${collectionName.toLowerCase().replace(/[^a-z0-9]/g, '-')}`} id={`auto-${collectionName.toLowerCase().replace(/[^a-z0-9]/g, '-')}`} class="inline" onclick="var fullUrl = `${window.location.origin}${window.location.pathname}#${id}`; navigator.clipboard.writeText(fullUrl);">
+									<h2 class="mb-4 mt-8 text-xl font-semibold hasId">
+										{data.config.title}
+									</h2>
+								</a>
+							)}
 							<section aria-label={`${data.config.title} list`}>
-							{data.config['display-style'] === 'medium-cards' ? (
+							{data.config['display-style'] === 'projects-hybrid' ? (
+								// Redesigned hybrid: sticky feature + dispatch list.
+								// ProjectsHybrid takes pre-built HybridItem[] descriptors
+								// so it can be reused by Highlights below; for the
+								// per-collection homepage-collections case we build them
+								// from the post array on the fly.
+								<ProjectsHybrid items={buildHybridItemsFromPosts(data.posts)} />
+							) : data.config['display-style'] === 'news-list' ? (
+								// Redesigned dispatch list
+								<NewsList posts={data.posts} />
+							) : data.config['display-style'] === 'medium-cards' ? (
 								// Portfolio/medium card style - clean grid without borders
 								<>
 									<div class="portfolio-cards grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -308,6 +583,33 @@ if (pageFound && page.Slug === HOME_PAGE_SLUG && HOMEPAGE_COLLECTIONS && Object.
 						</div>
 					)
 				))}
+
+				{/* Upcoming dates — promoted from the Gigs DB. Configured via
+				    constants-config.json → homepage-upcoming-dates. The
+				    display-style switch parallels the homepage-collections
+				    pattern so future styles (e.g. "dates-calendar") drop in
+				    here without touching the fetch logic. */}
+				{page.Slug === HOME_PAGE_SLUG && upcoming_gigs.length > 0 && (
+					<div class="cwk-section">
+						<SectionHeader
+							glyph={navGlyphForCollection("▇ dates")}
+							title={HOMEPAGE_UPCOMING_DATES.title || "Upcoming"}
+							count={upcoming_gigs.length}
+							moreHref={getNavLink("/collections/dates/")}
+							moreLabel="ALL DATES"
+							countFormat="n-equals"
+							id="auto-upcoming"
+						/>
+						<section aria-label="Upcoming dates">
+							{HOMEPAGE_UPCOMING_DATES["display-style"] === "dates-list" ? (
+								<DatesList gigs={upcoming_gigs} />
+							) : (
+								/* Fallback to dates-list for any unknown style */
+								<DatesList gigs={upcoming_gigs} />
+							)}
+						</section>
+					</div>
+				)}
 		</PageLayout>
 
 		<button

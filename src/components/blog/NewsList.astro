@@ -1,0 +1,106 @@
+---
+import type { Post } from "@/lib/interfaces";
+import { getPostLink, filePath, getNavLink } from "@/lib/blog-helpers";
+import { MENU_PAGES_COLLECTION } from "@/constants";
+import { slugify, getFormattedDate } from "@/utils";
+import FormattedDate from "@/components/FormattedDate.astro";
+
+/**
+ * News list — vertical "dispatch" layout. Each row is:
+ *   [date / tag]   [title + excerpt + dateline]   [thumbnail]
+ *
+ * Reads from a Post[]:
+ *   - Date           → formatted "Sep 18, 2025" + dateline month/year
+ *   - Tags           → first non-location tag → topical tag chip
+ *                      first location tag → dateline city
+ *   - Title          → row title (links to post)
+ *   - Excerpt        → 3-line clamped paragraph
+ *   - FeaturedImage  → thumbnail (200×130)
+ */
+
+interface Props {
+	posts: Post[];
+}
+
+const { posts } = Astro.props;
+
+const LOCATION_TAG_RE = /(.+)\s\(([A-Z]{2,3})\)$/;
+
+function pickTags(tags: { name: string }[] | undefined) {
+	if (!tags) return { topical: undefined, location: undefined };
+	let topical: string | undefined;
+	let location: string | undefined;
+	for (const t of tags) {
+		const m = t.name.match(LOCATION_TAG_RE);
+		if (m && !location) {
+			// "Toronto (CA)" → "Toronto"
+			location = m[1];
+		} else if (!m && !topical) {
+			topical = t.name;
+		}
+		if (topical && location) break;
+	}
+	return { topical, location };
+}
+
+function imgSrc(img: { Type?: string; Url: string; OptimizedUrl?: string } | null): string | undefined {
+	if (!img) return undefined;
+	if (img.Type === "external") return img.Url;
+	const u = img.OptimizedUrl || img.Url;
+	if (u.startsWith("/")) return u;
+	try {
+		return filePath(new URL(u));
+	} catch {
+		return u;
+	}
+}
+
+function shortMonthYear(dateStr: string | undefined): string {
+	if (!dateStr) return "";
+	const d = new Date(dateStr);
+	if (Number.isNaN(d.getTime())) return "";
+	return d.toLocaleString("en-US", { month: "short", year: "numeric" });
+}
+---
+
+<ol class="news-list" role="list">
+	{
+		posts.map((post) => {
+			const { topical, location } = pickTags(post.Tags);
+			const thumb = imgSrc(post.FeaturedImage);
+			const dateline = [location, shortMonthYear(post.Date)].filter(Boolean).join(" · ");
+			const href = getPostLink(post.Slug, post.Collection === MENU_PAGES_COLLECTION);
+			return (
+				<li class="news-row">
+					<a class="news-row-link" href={href} data-astro-prefetch aria-label={`Read: ${post.Title}`}>
+						<span class="sr-only">{post.Title}</span>
+					</a>
+					<div class="news-meta">
+						<FormattedDate date={post.Date} class="news-date" />
+						{topical && (
+							<a
+								class="news-tag mono"
+								href={getNavLink("/tags/" + slugify(topical) + "/")}
+								style="position: relative; z-index: 2;"
+							>
+								[{topical}]
+							</a>
+						)}
+					</div>
+					<div class="news-body">
+						<h3 class="news-title">{post.Title}</h3>
+						{post.Excerpt && <p class="news-excerpt">{post.Excerpt}</p>}
+						{dateline && <span class="news-dateline mono dim">{dateline}</span>}
+					</div>
+					{thumb ? (
+						<div class="news-thumb">
+							<img src={thumb} alt="" loading="lazy" decoding="async" />
+						</div>
+					) : (
+						<div class="news-thumb" aria-hidden="true" />
+					)}
+				</li>
+			);
+		})
+	}
+</ol>

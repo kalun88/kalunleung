@@ -1,46 +1,87 @@
 ---
 import FormattedDate from "@/components/FormattedDate.astro";
 import type { Post } from "@/lib/interfaces";
-import { getNotionColorToTailwindColor } from "@/lib/style-helpers";
-import { areDifferentDates } from "@/utils/date";
 import { getNavLink } from "@/lib/blog-helpers";
-import Icon from "@/components/Icon.astro";
 import { slugify } from "@/utils";
+import { NAV_ORDER } from "@/constants";
 
 interface Props {
 	post: Post;
 }
 
 const { post } = Astro.props;
-//FIXME: figure out what this remarkPluginFrontmatter is
-// const { remarkPluginFrontmatter } = await render();
+
+// Eyebrow glyph for a post's collection. nav-order titles look like
+// "▙\nportfolio"; the first line is the glyph. Mirrors the helper of
+// the same name in src/pages/[...page].astro so the post header
+// matches the rail and the homepage section header.
+function navGlyphForCollection(collectionName: string): string {
+	if (!collectionName) return "";
+	const item = (NAV_ORDER as { type: string; name?: string; title?: string }[]).find(
+		(n) => n.type === "collection" && n.name === collectionName,
+	);
+	if (!item || !item.title) return "";
+	const i = item.title.indexOf("\n");
+	return i === -1 ? item.title : item.title.substring(0, i);
+}
+
+// Eyebrow label — uses the lowercase nav label (e.g. "portfolio"),
+// falling back to the collection name with the leading glyph stripped
+// if nav-order has no entry for this collection.
+function navLabelForCollection(collectionName: string): string {
+	if (!collectionName) return "";
+	const item = (NAV_ORDER as { type: string; name?: string; title?: string }[]).find(
+		(n) => n.type === "collection" && n.name === collectionName,
+	);
+	if (item?.title) {
+		const i = item.title.indexOf("\n");
+		if (i !== -1) return item.title.substring(i + 1);
+	}
+	return collectionName.replace(/^\W+\s*/, "");
+}
+
+const eyebrowGlyph = navGlyphForCollection(post.Collection);
+const eyebrowLabel = navLabelForCollection(post.Collection);
 
 const dateTimeOptions: Intl.DateTimeFormatOptions = {
+	year: "numeric",
 	month: "long",
 };
 ---
 
-<h1 class="title mb-3 sm:mb-1" data-pagefind-filter=`collections:${post.Collection}`>
-	{post.Title}
-</h1>
-<div class="flex max-w-full flex-wrap items-center gap-x-3 gap-y-2">
-	<p class="font-mono text-sm text-gray-500 dark:text-gray-400">
-	<FormattedDate date={post.Date} dateTimeOptions={dateTimeOptions} />
-	</p>
-</div>
 {
-	post.Tags && post.Tags.length > 0 && (
-		<div class="mt-2 font-mono text-xs space-x-2">
-			{post.Tags.map((tag, i) => (
-				<a
-					class="inline-block transition-opacity hover:opacity-80"
-					aria-label={`View more blogs with the tag ${tag.name}`}
-					href={getNavLink("/tags/" + slugify(tag.name) + "/")}
-					data-pagefind-filter="tags"
-				>
-					[{tag.name}]
-				</a>
-			))}
+	eyebrowGlyph && (
+		<div class="page-eyebrow">
+			<span class="glyph" aria-hidden="true">
+				{eyebrowGlyph}
+			</span>
+			{eyebrowLabel}
 		</div>
 	)
 }
+<h1 class="page-title" data-pagefind-filter={`collections:${post.Collection}`}>
+	{post.Title}
+</h1>
+<div class="post-meta">
+	<FormattedDate
+		class="post-meta__date"
+		date={post.Date}
+		dateTimeOptions={dateTimeOptions}
+	/>
+	{
+		post.Tags && post.Tags.length > 0 && (
+			<div class="post-meta__tags">
+				{post.Tags.map((tag) => (
+					<a
+						class="post-meta__tag"
+						aria-label={`View more posts with the tag ${tag.name}`}
+						href={getNavLink("/tags/" + slugify(tag.name) + "/")}
+						data-pagefind-filter="tags"
+					>
+						[{tag.name}]
+					</a>
+				))}
+			</div>
+		)
+	}
+</div>

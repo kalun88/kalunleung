@@ -75,39 +75,27 @@ const img3ZIndex = 3;
 		aria-label={`Read: ${post.Title}`}
 	></a>
 
-	<div class="grid grid-cols-1 md:grid-cols-[200px_1fr_auto] gap-6 items-start">
-		<!-- Column 1: Date (top-left) + Tags (under date) -->
-		<div class="flex flex-col justify-start min-h-[120px] font-mono">
-			<!-- Date at top-left -->
-			<div class="mb-2">
-				<FormattedDate
-					date={post.Date}
-					class="font-mono text-sm text-gray-500 dark:text-gray-400"
-				/>
-			</div>
-
-			<!-- Tags under the date -->
-			<div class="space-y-1">
-				{post.Tags && post.Tags.length > 0 ? (
-					post.Tags.slice(0, 3).map((tag) => (
+	<div class="pp-wide-grid">
+		<!-- Column 1: Date + Tags, tightly clustered at top of row -->
+		<div class="pp-wide-meta">
+			<FormattedDate date={post.Date} class="pp-wide-date" />
+			{post.Tags && post.Tags.length > 0 && (
+				<div class="pp-wide-tags">
+					{post.Tags.slice(0, 3).map((tag) => (
 						<a
-							class="block text-xs hover:opacity-80 transition-opacity relative z-20"
-							style="pointer-events: auto;"
-							aria-label={`View more blogs with the tag ${tag.name}`}
+							aria-label={`View more posts with the tag ${tag.name}`}
 							href={getNavLink("/tags/" + slugify(tag.name) + "/")}
 						>
 							[{tag.name}]
 						</a>
-					))
-				) : (
-					<div class="text-xs text-gray-400">[]</div>
-				)}
-			</div>
+					))}
+				</div>
+			)}
 		</div>
 
-		<!-- Column 2: Title + Excerpt -->
-		<div class="flex flex-col justify-center space-y-2">
-			<div class="flex items-start gap-2">
+		<!-- Column 2: Title + Excerpt, top-aligned -->
+		<div class="pp-wide-body">
+			<div class="pp-wide-title-row">
 				{showPin && post.Pinned && (
 					<Icon
 						class="h-4 w-4 text-accent flex-shrink-0 mt-1"
@@ -116,20 +104,13 @@ const img3ZIndex = 3;
 						focusable="false"
 					/>
 				)}
-				<Tag class="text-xl font-semibold text-slate-900 dark:text-slate-100 leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-					{post.Title}
-				</Tag>
+				<Tag class="pp-wide-title">{post.Title}</Tag>
 			</div>
-
-			{post.Excerpt && (
-				<p class="text-sm text-gray-600 dark:text-gray-300 leading-relaxed line-clamp-3">
-					{post.Excerpt}
-				</p>
-			)}
+			{post.Excerpt && <p class="pp-wide-excerpt">{post.Excerpt}</p>}
 		</div>
 
 		<!-- Column 3: Cover image(s) - artistic overlapping layout for 2-3 images -->
-		<div class="flex gap-2 items-center justify-center md:justify-end w-full md:min-w-[200px] flex-wrap">
+		<div class="pp-wide-images flex gap-2 items-start justify-end w-full md:min-w-[200px] flex-wrap">
 			{selectedImages.length > 0 ? (
 				selectedImages.length === 3 ? (
 					<!-- 3 images: artistic overlapping collage -->

@@ -2,32 +2,47 @@
 import type { SiteMeta } from "@/types";
 import { ViewTransitions } from "astro:transitions";
 import BaseHead from "@/components/BaseHead.astro";
-import Header from "@/components/layout/Header.astro";
-import Footer from "@/components/layout/Footer.astro";
+import Rail from "@/components/layout/Rail.astro";
+import SiteFooter from "@/components/layout/SiteFooter.astro";
 import SkipLink from "@/components/SkipLink.astro";
 import { siteInfo } from "@/siteInfo";
-import { ENABLE_LIGHTBOX, REFERENCES } from "@/constants";
+import { ENABLE_LIGHTBOX, REFERENCES, HOME_PAGE_SLUG } from "@/constants";
 interface Props {
 meta: SiteMeta;
 bodyClass?: string;
+/** Slug of the page being rendered. Drives `data-page-slug` on <body>
+ *  so per-page CSS variants (e.g. .about-editorial) can target it. */
+pageSlug?: string;
 }
 const {
 meta: { title = siteInfo.title, description = siteInfo.description, ogImage, articleDate },
 bodyClass = '',
+pageSlug,
 } = Astro.props;
+
+// `redesign` class enables the new editorial shell rules in global.css.
+// `main--prose` adds default padding for content pages. The home page
+// opts out (its hero needs to bleed edge-to-edge) via .main--bare.
+const isHome = pageSlug === HOME_PAGE_SLUG;
+const mainClass = isHome ? "main main--bare" : "main main--prose";
 ---
 <html lang={siteInfo.lang}>
    <head>
       <BaseHead title={title} description={description} ogImage={ogImage} articleDate={articleDate} />
       <ViewTransitions />
    </head>
-   <body class={`print:max-w-full ${bodyClass}`}>
+   <body
+      class={`redesign print:max-w-full ${bodyClass}`}
+      data-page-slug={pageSlug ?? ""}
+   >
       <SkipLink />
-      <Header />
-      <main id="main" class="w-full max-w-full">
-         <slot />
-      </main>
-      <Footer />
+      <div class="page">
+         <Rail />
+         <main id="main" class={mainClass}>
+            <slot />
+         </main>
+      </div>
+      <SiteFooter />
       <script type="module">
         // Listen for beforeprint event to open all details elements
 window.addEventListener('beforeprint', function () {

@@ -1,4 +1,46 @@
-# Homepage Collections Configuration Guide
+# Homepage Configuration Guide
+
+The homepage assembles three independent blocks, each driven by its own
+key in `constants-config.json`:
+
+1. **`homepage-highlights`** — cross-collection showcase. Pulls anything
+   with `Highlight = true` from the CMS DB (any collection: main, news,
+   media, portfolio) **and** the standalone Dates DB. Renders with the
+   sticky-feature + dispatch-list `projects-hybrid` layout. This replaced
+   the previous portfolio-only "Selected Works" block.
+2. **`homepage-collections`** — per-collection blocks (typically the News
+   strip). See sections below.
+3. **`homepage-upcoming-dates`** — automatic future-date strip from the
+   Dates DB.
+
+## `homepage-highlights`
+
+```json
+"homepage-highlights": {
+  "enabled": true,
+  "title": "Highlights",
+  "glyph": "▒",
+  "display-style": "projects-hybrid"
+}
+```
+
+- An item is eligible if its `Highlight` checkbox is true. The CMS DB
+  has `Highlight` on every page; the Dates DB has its own `Highlight`
+  added alongside `Highlight Rank` and `FeaturedImage`.
+- Ordering: `Highlight Rank` ascending (unranked items fall to the end),
+  with Date descending as the tiebreaker. Set `Highlight Rank` to curate
+  exact order; leave it blank to fall back to date. (`Highlight Rank` is
+  separate from the existing `Rank` property on the CMS DB, which is
+  reused by other parts of the build.)
+- Past + future dates are both eligible — Highlight is curatorial, not a
+  calendar filter.
+- A date with no `EventLink` falls back to `/collections/dates/`. A
+  highlighted item with no `FeaturedImage` still renders, but the feature
+  panel shows a soft-grey placeholder; add an image in Notion to fix.
+- `max-items` is optional. Omit it (as above) to show every highlighted
+  item — you self-limit via Notion. Set it to a number to cap the list.
+
+## `homepage-collections`
 
 This document explains how the `homepage-collections` configuration works in `constants-config.json`.
 
@@ -26,12 +68,25 @@ This document explains how the `homepage-collections` configuration works in `co
 - **Example**: `"title": "Latest News"` → displays as `<h2>Latest News</h2>`
 - **Use case**: Customize section names independently of Notion collection names
 
-### `"use-pinned": true/false`
-- **`true`**: Only shows items where "Pinned" property = true in Notion
-- **`false`**: Shows most recent items regardless of pin status
-- **Use case**: 
-  - `true` = Curated content (hand-picked featured items)
-  - `false` = Automatic recent content
+### Per-section promotion filters
+
+A homepage-collections block can opt into one of these checkbox-driven
+gates. They're additive — a post must satisfy every enabled gate to
+appear in that block.
+
+- **`"use-show-on-homepage-news": true`** — only show items where the
+  `Show on Homepage News` checkbox is true. Used by the News strip so
+  news promotion is decoupled from the cross-collection Highlights flag.
+- **`"use-highlight": true`** — only show items where `Highlight` is
+  true. Useful if you want a per-collection block to mirror Highlights
+  selections. Note: items satisfying this also appear in the
+  cross-collection `homepage-highlights` block above.
+- **`"use-featured": true`** — legacy alias for `use-highlight`, kept so
+  configs from before the Featured→Highlight rename still work. New
+  configs should use `use-highlight` (or `use-show-on-homepage-news`).
+
+If none are set, the block shows every post in the collection (subject
+to `max-items`).
 
 ### `"max-items": number`
 - **Purpose**: Limits how many items to display in the section

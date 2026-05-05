@@ -1,0 +1,113 @@
+---
+import type { HybridItem } from "@/lib/hybrid-items";
+
+/**
+ * Hybrid projects layout — sticky feature panel on the left, vertical
+ * dispatch list on the right. Hover on a list row swaps the feature.
+ *
+ * Renders pre-built HybridItem descriptors (built by callers via
+ * `buildHybridItemsFromPosts` or `buildHybridItemsFromHighlights`). The
+ * component is purely presentational so the same layout can be fed by
+ * either a homogeneous Post[] (Selected Works) or a mixed Highlights
+ * source set that includes Gig entries from the standalone Dates DB.
+ *
+ * Each HybridItem provides: id, num, year, title, excerpt, tag, topical,
+ * locations, role, images (already-resolved src strings), href.
+ */
+
+interface Props {
+	items: HybridItem[];
+}
+
+const { items } = Astro.props;
+
+const featureId = (id: string) => `hybrid-feature-${id}`;
+---
+
+{
+	items.length > 0 && (
+		<div class="works-hybrid" data-projects-hybrid>
+			{/* Feature panel (sticky). One per item; only the active one shows. */}
+			<div class="hybrid-feature-stage">
+				{items.map((item, i) => (
+					<article
+						class="hybrid-feature"
+						data-feature-id={item.id}
+						aria-hidden={i === 0 ? undefined : "true"}
+						style={i === 0 ? undefined : "display:none;"}
+						id={featureId(item.id)}
+					>
+						<div class="hybrid-feature-img">
+							{item.num && <span class="hybrid-feature-num">{item.num}</span>}
+							{item.images[0] ? (
+								<img src={item.images[0]} alt={item.title} loading={i === 0 ? "eager" : "lazy"} decoding="async" />
+							) : null}
+							{item.images[1] ? (
+								<img class="hybrid-feature-img-2" src={item.images[1]} alt="" loading="lazy" decoding="async" />
+							) : null}
+						</div>
+						<a href={item.href} data-astro-prefetch>
+							<h3 class="hybrid-feature-title">{item.title}</h3>
+						</a>
+						<div class="hybrid-feature-body">
+							{item.role && <span class="mono dim">{item.role}</span>}
+							{item.excerpt && <p>{item.excerpt}</p>}
+							{item.locations.length > 0 && (
+								<span class="mono dim">{item.locations.join(" · ")}</span>
+							)}
+						</div>
+					</article>
+				))}
+			</div>
+
+			{/* Rest list — hover/focus a row to swap the feature. */}
+			<ul class="hybrid-rest" role="list">
+				{items.map((item, i) => (
+					<li class={i === 0 ? "is-active" : undefined} data-rest-id={item.id}>
+						<a href={item.href} data-astro-prefetch>
+							<span class="works-num">{item.num}</span>
+							<span class="hybrid-rest-title">{item.title}</span>
+							{item.tag && <span class="hybrid-rest-tag dim">[{item.tag}]</span>}
+							<span class="hybrid-rest-yr dim">{item.year}</span>
+							<span class="hybrid-rest-mark">▶</span>
+						</a>
+					</li>
+				))}
+			</ul>
+		</div>
+	)
+}
+
+<script>
+	// Hover-to-feature: swap which .hybrid-feature is visible based on which
+	// .hybrid-rest <li> is hovered or focused. No-op when only one item.
+	function initProjectsHybrid() {
+		document.querySelectorAll<HTMLElement>("[data-projects-hybrid]").forEach((root) => {
+			const features = root.querySelectorAll<HTMLElement>(".hybrid-feature[data-feature-id]");
+			const rows = root.querySelectorAll<HTMLLIElement>(".hybrid-rest li[data-rest-id]");
+
+			if (features.length <= 1) return;
+
+			const activate = (id: string) => {
+				features.forEach((f) => {
+					const match = f.dataset.featureId === id;
+					f.style.display = match ? "" : "none";
+					if (match) f.removeAttribute("aria-hidden");
+					else f.setAttribute("aria-hidden", "true");
+				});
+				rows.forEach((r) => {
+					r.classList.toggle("is-active", r.dataset.restId === id);
+				});
+			};
+
+			rows.forEach((r) => {
+				const id = r.dataset.restId!;
+				r.addEventListener("mouseenter", () => activate(id));
+				r.addEventListener("focusin", () => activate(id));
+			});
+		});
+	}
+
+	initProjectsHybrid();
+	document.addEventListener("astro:page-load", initProjectsHybrid);
+</script>

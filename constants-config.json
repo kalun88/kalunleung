@@ -92,24 +92,28 @@
 		"column-4-width": "calc(25% - 24px)"
 	},
 	"recent-posts-on-home-page": false,
+	"homepage-highlights": {
+		"enabled": true,
+		"title": "Highlights",
+		"glyph": "▒",
+		"display-style": "projects-hybrid"
+	},
 	"homepage-collections": {
-
-		"▙ portfolio": {
-			"enabled": true,
-			"title": "Projects",
-			"use-pinned": true,
-			"max-items": 3,
-			"display-style": "wide"
-		},
 
 		"▉ news": {
 			"enabled": true,
 			"title": "News",
-			"use-pinned": true,
+			"use-show-on-homepage-news": true,
 			"max-items": 3,
-			"display-style": "medium-cards"
+			"display-style": "news-list"
 		}
-		
+
+	},
+	"homepage-upcoming-dates": {
+		"enabled": true,
+		"title": "Upcoming",
+		"max-items": 4,
+		"display-style": "dates-list"
 	},
 	"theme": {
 		"colors": {
@@ -151,10 +155,10 @@
 			}
 		},
 		"fontfamily-google-fonts": {
-			"combined-url": "https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,100..900;1,100..900&family=Roboto+Mono:ital,wght@0,100..700;1,100..700&display=swap",
-			"sans-font-name": "Jost",
+			"combined-url": "https://fonts.googleapis.com/css2?family=Inter+Tight:ital,wght@0,300..700;1,300..700&family=JetBrains+Mono:ital,wght@0,400..600;1,400..600&display=swap",
+			"sans-font-name": "Inter Tight",
 			"serif-font-name": "",
-			"mono-font-name": "Roboto Mono"
+			"mono-font-name": "JetBrains Mono"
 		}
 	},
 	"webmention": {
